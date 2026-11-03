@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Command Center">
+<meta name="theme-color" content="#0e0f11">
+<meta name="robots" content="noindex">
+<meta name="cc-donnees" content="https://raw.githubusercontent.com/kyrs0/cc-telephone/main/donnees.chiffre.json">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icone.png">
+<link rel="icon" href="icone.png">
+<title>Command Center</title>
+<!-- Vue téléphone du Command Center V4 (03/11/2026, Tom : « je veux avoir le design du Command
+     Center sur mon tél »). Servie par telephone.js sur le Wi-Fi de la maison, en lecture seule ;
+     les chiffres viennent de « Command Center — chiffres.json ». Un onglet par page du CC, chacun
+     dans le style de sa page : Accueil façon Finary, Budget façon Actual, Crypto façon CoinGecko,
+     Placements, Plan façon M1 Finance. -->
+<style>
+  :root { --fond: #0e0f11; --carte: #15161a; --bord: #222429; --texte: #f3f4f6; --doux: #8d929c; --pos: #3ecf8e; --neg: #ff6b6b; --or: #f5b83d;
+    --sys: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Roboto, sans-serif;
+    --titre: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", Roboto, sans-serif; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--fond); color: var(--texte); font: 15px/1.45 var(--sys); -webkit-text-size-adjust: 100%; }
+  body { padding: calc(env(safe-area-inset-top) + 8px) 16px calc(env(safe-area-inset-bottom) + 86px); min-height: 100vh; }
+  .tete { display: flex; align-items: center; gap: 10px; padding: 6px 0 14px; }
+  .logo { width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(140deg, #2b2e35, #17181c); display: grid; place-items: center; font: 800 13px/1 var(--titre); color: #fff; letter-spacing: .02em; position: relative; }
+  .logo::after { content: "V4"; position: absolute; bottom: -5px; font: 700 7px/1 var(--sys); color: #111; background: var(--or); border-radius: 3px; padding: 1.5px 3px; }
+  .tete h1 { margin: 0; font: 700 20px/1.1 var(--titre); letter-spacing: -.01em; }
+  .tete small { display: block; color: var(--doux); font-size: 12px; font-weight: 500; margin-top: 2px; }
+  .maj { margin-left: auto; border: 1px solid var(--bord); background: #17181b; color: var(--texte); border-radius: 999px; width: 38px; height: 38px; font-size: 18px; }
+  .maj.tourne { animation: tour .8s linear infinite; } @keyframes tour { to { transform: rotate(360deg); } }
+  .carte { background: var(--carte); border: 1px solid var(--bord); border-radius: 18px; padding: 16px; margin-bottom: 12px; }
+  .carte h2 { margin: 0 0 10px; font: 650 13px/1.2 var(--sys); color: var(--doux); text-transform: uppercase; letter-spacing: .06em; }
+  .ligne { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 7px 0; border-top: 1px solid var(--bord); }
+  .ligne:first-of-type { border-top: 0; }
+  .ligne span { color: var(--doux); } .ligne b { font-weight: 650; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  .ligne b em { white-space: normal; }
+  .ligne > span { min-width: 0; } .ligne > b { min-width: 0; max-width: 70%; overflow-wrap: anywhere; }
+  .liste { display: flex; gap: 10px; padding: 8px 0; border-top: 1px solid #1c2a40; } .liste:first-of-type { border-top: 0; } .liste span { color: #8fb3ff; font-weight: 700; min-width: 14px; }
+  .ligne em { font-style: normal; display: block; font-size: 12px; color: var(--doux); font-weight: 500; }
+  .pos { color: var(--pos) !important; } .neg { color: var(--neg) !important; } .dim { color: var(--doux); }
+  .gros { font: 750 40px/1.05 var(--titre); letter-spacing: -.025em; font-variant-numeric: tabular-nums; }
+  .sous { color: var(--doux); font-size: 13px; margin-top: 6px; } .sous b { color: var(--texte); font-weight: 650; }
+  .barre { height: 8px; border-radius: 99px; background: #23252a; overflow: hidden; margin: 10px 0 4px; } .barre i { display: block; height: 100%; border-radius: 99px; }
+  .note { color: var(--doux); font-size: 12px; line-height: 1.5; margin: 8px 2px 0; }
+  .pill { display: inline-block; font-size: 11px; font-weight: 650; padding: 2px 8px; border-radius: 99px; background: #2a2c31; color: #c9ccd3; margin: 2px 4px 0 0; white-space: nowrap; }
+  .pill.o { background: rgba(245,184,61,.15); color: var(--or); }
+  .alerte { display: flex; gap: 10px; padding: 9px 0; border-top: 1px solid var(--bord); font-size: 14px; } .alerte:first-of-type { border-top: 0; }
+  .alerte i { width: 8px; height: 8px; border-radius: 50%; background: var(--or); margin-top: 7px; flex: 0 0 auto; }
+  .vide { color: var(--doux); text-align: center; padding: 40px 10px; }
+  .grille2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; } .grille2 .carte { margin-bottom: 0; }
+  .kpi span { display: block; color: var(--doux); font-size: 12px; } .kpi b { font: 700 20px/1.2 var(--titre); font-variant-numeric: tabular-nums; }
+  /* Budget : façon Actual (violet) */
+  .p-budget .carte { background: #17151c; border-color: #2a2433; } .p-budget h2 { color: #b28ce8; }
+  .env { padding: 10px 0; border-top: 1px solid #2a2433; } .env:first-of-type { border-top: 0; }
+  .env-h { display: flex; justify-content: space-between; gap: 10px; } .env-h b { font-weight: 650; } .env-h strong { font-variant-numeric: tabular-nums; }
+  .env small { color: var(--doux); font-size: 12px; } .env .barre { margin: 7px 0 3px; background: #2a2433; height: 6px; }
+  /* Crypto : façon CoinGecko (vert) */
+  .p-crypto .carte { background: #0f1512; border-color: #1d2a22; } .p-crypto h2 { color: #6fdc3a; }
+  .coin { display: flex; align-items: center; gap: 12px; } .coin .rond { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font: 800 15px/1 var(--titre); color: #fff; flex: 0 0 auto; }
+  .coin h3 { margin: 0; font: 700 17px/1.2 var(--titre); } .coin h3 small { color: var(--doux); font: 600 12px var(--sys); margin-left: 6px; }
+  .coin .v { margin-left: auto; text-align: right; } .coin .v b { font: 700 18px/1.2 var(--titre); font-variant-numeric: tabular-nums; display: block; }
+  .pru { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .pru div { background: #141d18; border-radius: 12px; padding: 10px 12px; } .pru span { display: block; color: var(--doux); font-size: 12px; } .pru b { font: 700 17px/1.3 var(--titre); font-variant-numeric: tabular-nums; }
+  /* Plan : façon M1 Finance (bleu nuit) */
+  .p-plan .carte { background: #0f1828; border-color: #1c2a40; } .p-plan h2 { color: #8fb3ff; }
+  .p-plan .ligne { border-color: #1c2a40; }
+  .gros-plan { background: linear-gradient(135deg, #1b2c4a, #13203a); border: 1px solid #2a3f63; border-radius: 18px; padding: 16px; margin-bottom: 12px; }
+  .gros-plan span { color: #a9bde3; font-size: 13px; } .gros-plan b { display: block; font: 750 30px/1.15 var(--titre); margin: 4px 0; font-variant-numeric: tabular-nums; } .gros-plan small { color: #a9bde3; }
+  /* Placements */
+  .p-placements .carte h2 { color: #7cc4ff; }
+  /* barre d'onglets */
+  nav { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr); background: rgba(14,15,17,.92); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--bord); padding: 6px 4px calc(env(safe-area-inset-bottom) + 6px); }
+  nav button { border: 0; background: none; color: #7d828c; font: 600 10.5px/1.2 var(--sys); display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 0; }
+  nav button svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  nav button.on { color: var(--texte); }
+  /* écran du mot de passe (appli publiée sur GitHub) */
+  .verrou { max-width: 420px; margin: 40px auto 0; text-align: center; }
+  .verrou .logo { width: 64px; height: 64px; border-radius: 18px; margin: 0 auto 18px; font-size: 22px; }
+  .verrou h2 { font: 700 22px/1.2 var(--titre); margin: 0 0 8px; } .verrou p { color: var(--doux); font-size: 14px; margin: 0 0 18px; }
+  .verrou input { width: 100%; font: 16px var(--sys); padding: 14px 16px; border-radius: 14px; border: 1px solid var(--bord); background: #17181b; color: var(--texte); margin-bottom: 10px; }
+  .verrou button { width: 100%; font: 650 16px var(--sys); padding: 14px; border-radius: 14px; border: 0; background: var(--texte); color: var(--fond); }
+  .verrou .err { color: var(--neg); font-size: 13px; min-height: 18px; margin-top: 8px; }
+  .bas { text-align: center; margin: 18px 0 4px; } .bas button { border: 0; background: none; color: var(--doux); font: 500 13px var(--sys); text-decoration: underline; }
+</style>
+</head>
+<body>
+<header class="tete"><div class="logo">CC</div><div><h1 id="titre">Command Center</h1><small id="maj">…</small></div><button class="maj" id="rafraichir" aria-label="Mettre à jour">↻</button></header>
+<main id="page"><div class="vide">Chargement…</div></main>
+<nav id="onglets"></nav>
+<script>
+(function () {
+  'use strict';
+  var ONGLETS = [
+    ['accueil', 'Accueil', '<path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/>'],
+    ['budget', 'Budget', '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h4"/>'],
+    ['crypto', 'Crypto', '<circle cx="12" cy="12" r="8.5"/><path d="M9.5 8h4a2 2 0 0 1 0 4h-4V8zm0 4h4.5a2 2 0 0 1 0 4H9.5v-4zM11 6.5V8m0 8v1.5"/>'],
+    ['placements', 'Placements', '<path d="M4 19V11M9.5 19V6M15 19v-5M20.5 19V9"/>'],
+    ['plan', 'Plan', '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5V12l6 6"/>'],
+  ];
+  var J = null, onglet = 'accueil';
+  /* Appli publiée sur GitHub (02-03/11/2026) : les chiffres arrivent chiffrés depuis cette adresse ;
+     sans elle (Wi-Fi), ils viennent du PC en clair (« donnees »). */
+  var SOURCE = (document.querySelector('meta[name="cc-donnees"]') || {}).content || null;
+  var stock = { lire: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, ecrire: function (k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { /* rien */ } } };
+  var b64 = function (s) { var b = atob(s), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; };
+  var vers64 = function (u) { var s = ''; u = new Uint8Array(u); for (var i = 0; i < u.length; i++) s += String.fromCharCode(u[i]); return btoa(s); };
+  // window.crypto : l'onglet « crypto » (fonction plus bas) porte le même nom dans ce fichier
+  var subtle = window.crypto && window.crypto.subtle;
+  function cleDepuisMotDePasse(mdp, env) {
+    if (!subtle) return Promise.reject(new Error('Ce navigateur ne sait pas déchiffrer (ouvre l’appli en https).'));
+    return subtle.importKey('raw', new TextEncoder().encode(mdp), 'PBKDF2', false, ['deriveBits'])
+      .then(function (k) { return subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: b64(env.sel), iterations: env.iter }, k, 256); });
+  }
+  function dechiffrer(cleBrute, env) {
+    if (!subtle) return Promise.reject(new Error('Ce navigateur ne sait pas déchiffrer (ouvre l’appli en https).'));
+    return subtle.importKey('raw', cleBrute, 'AES-GCM', false, ['decrypt'])
+      .then(function (k) { return subtle.decrypt({ name: 'AES-GCM', iv: b64(env.iv) }, k, b64(env.donnees)); })
+      .then(function (o) { return JSON.parse(new TextDecoder().decode(o)); });
+  }
+  var enveloppe = null;   // le dernier fichier chiffré reçu (gardé sur le téléphone pour le hors ligne)
+  try { onglet = localStorage.getItem('cc-tel-onglet') || 'accueil'; } catch (e) { /* stockage indisponible */ }
+  if (!ONGLETS.some(function (o) { return o[0] === onglet; })) onglet = 'accueil';
+
+  var nf = function (d) { return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d }); };
+  function n(v, d) { return v == null || !isFinite(v) ? '—' : nf(d == null ? 2 : d).format(v); }
+  // espaces insécables avant €, $ et % : un montant ne se coupe jamais en deux lignes
+  function eur(v, d) { return v == null || !isFinite(v) ? '—' : n(v, d == null ? (Math.abs(v) >= 1000 ? 0 : 2) : d) + ' €'; }
+  function eurS(v, d) { return v == null || !isFinite(v) ? '—' : (v > 0 ? '+' : v < 0 ? '−' : '') + eur(Math.abs(v), d); }
+  function usd(v, d) { return v == null || !isFinite(v) ? '—' : n(v, d == null ? (v < 100 ? 2 : 0) : d) + ' $'; }
+  function pct(v, d) { return v == null || !isFinite(v) ? '—' : (v > 0 ? '+' : '') + n(v, d == null ? 1 : d) + ' %'; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  var MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  function mois(iso) { if (!iso) return '—'; var p = iso.split('-'); return MOIS[+p[1] - 1] + ' ' + p[0]; }
+  function date(iso) { if (!iso) return '—'; var p = String(iso).slice(0, 10).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+  function cls(v) { return v > 0 ? 'pos' : v < 0 ? 'neg' : ''; }
+  function ligne(l, v, sous) { return '<div class="ligne"><span>' + l + '</span><b>' + v + (sous ? '<em>' + sous + '</em>' : '') + '</b></div>'; }
+  function barre(p, c) { return '<div class="barre"><i style="width:' + Math.max(0, Math.min(100, p || 0)).toFixed(1) + '%;background:' + c + '"></i></div>'; }
+  var g = function (o, k) { return k.split('.').reduce(function (a, x) { return a == null ? null : a[x]; }, o); };
+
+  function depuis(iso) {
+    var m = Math.round((Date.now() - Date.parse(iso)) / 60000);
+    if (!isFinite(m)) return '';
+    if (m < 2) return 'à l’instant'; if (m < 60) return 'il y a ' + m + ' min';
+    var h = Math.round(m / 60); if (h < 24) return 'il y a ' + h + ' h';
+    return 'le ' + date(iso);
+  }
+
+  /* ── Accueil (façon Finary) ── */
+  function accueil() {
+    var C = J.capital || {}, A = C.auCours || {}, Ob = J.objectif || {}, B = J.banque || {}, cou = g(J, 'bilan.couloir') || {};
+    var p100 = A.total ? A.total / (Ob.montant || 100000) * 100 : 0;
+    var h = '<section class="carte"><h2>Capital investi</h2><div class="gros">' + eur(A.total, 0) + '</div>'
+      + '<div class="sous">Figé au 10 (' + esc(mois(g(C, 'du10.mois'))) + ') : <b>' + eur(g(C, 'du10.total'), 0) + '</b> · banque à part</div>'
+      + barre(p100, 'linear-gradient(90deg,#3ecf8e,#2bb3a3)') + '<div class="sous"><b>' + n(p100, 1) + ' %</b> de ' + eur(Ob.montant || 100000, 0) + ' · objectif le ' + date(Ob.date) + '</div></section>';
+    h += '<div class="grille2"><section class="carte kpi"><span>Patrimoine net</span><b>' + eur(J.patrimoineNet, 0) + '</b></section>'
+      + '<section class="carte kpi"><span>Investi / mois (3 mois)</span><b>' + eur(Ob.investiParMois3Mois, 0) + '</b></section></div><div style="height:12px"></div>';
+    h += '<section class="carte"><h2>Répartition</h2>' + ligne('Trading', eur(A.trading)) + ligne('Crypto', eur(A.crypto)) + ligne('PEA', eur(A.pea)) + ligne('Livret A', eur(A.livret)) + '</section>';
+    h += '<section class="carte"><h2>Banque · ' + eur(B.total) + '</h2>' + (B.comptes || []).map(function (c) { return ligne(esc(c.nom), '<span class="' + (c.solde < 0 ? 'neg' : '') + '">' + eur(c.solde) + '</span>'); }).join('') + '</section>';
+    if (cou.horizons) {
+      var pos = String(cou.positionTexte || '—').split(' · ');   // « au départ du couloir · novembre 2026 jugé après le 10 »
+      h += '<section class="carte"><h2>Couloir 2032</h2>' + ligne('Position', esc(pos[0]), pos[1] ? esc(pos[1]) : '')
+        + cou.horizons.map(function (x) { return ligne(esc(x.horizon) + ' · ' + esc(mois(x.iso)), eur(x.basse, 0) + ' – ' + eur(x.haute, 0)); }).join('')
+        + (cou.jalonAnnee ? ligne('Fin ' + cou.jalonAnnee.annee, esc(cou.jalonAnnee.statut), eur(cou.jalonAnnee.basse, 0) + ' – ' + eur(cou.jalonAnnee.haute, 0)) : '') + '</section>';
+    }
+    var al = J.alertes || [];
+    h += '<section class="carte"><h2>Alertes</h2>' + (al.length ? al.map(function (a) { return '<div class="alerte"><i></i><div>' + esc(a) + '</div></div>'; }).join('') : '<div class="dim">Rien à signaler.</div>') + '</section>';
+    return h;
+  }
+
+  /* ── Budget (façon Actual) ── */
+  function budget() {
+    var B = J.budget, A = J.abonnements || [];
+    if (!B) return '<div class="vide">Le Budget n’a pas encore publié son cycle.</div>';
+    var env = B.enveloppes || [], vars = env.filter(function (e) { return e.groupe !== 'fixes'; }), fixes = env.filter(function (e) { return e.groupe === 'fixes'; });
+    var bloc = function (e) {
+      // une charge fixe payée en entier, c'est normal (violet) ; une dépense presque au bout : orange
+      var p = e.prevu > 0 ? e.depense / e.prevu * 100 : (e.depense > 0 ? 100 : 0), c = e.reste < 0 ? '#ff6b6b' : (p > 85 && e.groupe !== 'fixes') ? '#f5b83d' : '#a775f0';
+      return '<div class="env"><div class="env-h"><b>' + esc(e.nom) + '</b><strong class="' + (e.reste < 0 ? 'neg' : 'pos') + '">' + eur(e.reste) + '</strong></div>' + barre(p, c)
+        + '<small>' + eur(e.depense) + ' dépensés sur ' + eur(e.prevu) + (e.reste < 0 ? ' · dépassé' : ' · reste') + '</small></div>';
+    };
+    var parAn = A.reduce(function (s, a) { return s + (a.parAn || 0); }, 0);
+    return '<section class="carte"><h2>' + esc(B.cycle || 'Cycle en cours') + '</h2><div class="sous" style="margin-top:0">Rentrées du cycle : <b>' + eur(B.rentrees) + '</b></div></section>'
+      + '<section class="carte"><h2>Dépenses du cycle</h2>' + (vars.length ? vars.map(bloc).join('') : '<div class="dim">Aucune enveloppe.</div>') + '</section>'
+      + (fixes.length ? '<section class="carte"><h2>Charges fixes</h2>' + fixes.map(bloc).join('') + '</section>' : '')
+      + '<section class="carte"><h2>Abonnements · ' + eur(parAn, 0) + ' / an</h2>' + (A.length ? A.map(function (a) {
+        return ligne(esc(a.nom) + '<em>' + esc(a.rythme) + ' · prochain le ' + date(a.prochaine) + '</em>' + (a.alertes || []).map(function (x) { return '<span class="pill o">' + esc(x) + '</span>'; }).join(''), eur(a.montant), eur(a.parAn, 0) + ' / an');
+      }).join('') : '<div class="dim">Aucun abonnement repéré.</div>') + '</section>';
+  }
+
+  /* ── Crypto (façon CoinGecko) ── */
+  function crypto() {
+    var C = J.crypto || {}, b = C.btc || {}, l = C.link || {}, R = g(J, 'bilan.link.regles') || {};
+    var coin = function (sym, nom, couleur, x, pruE, coursTxt) {
+      return '<section class="carte"><div class="coin"><span class="rond" style="background:' + couleur + '">' + sym.charAt(0) + '</span><div><h3>' + nom + '<small>' + sym + '</small></h3><div class="dim" style="font-size:13px">' + coursTxt + '</div></div>'
+        + '<div class="v"><b>' + eur(x.valeur) + '</b><span class="' + cls(x.pv) + '" style="font-weight:650;font-size:13px">' + eurS(x.pv) + (x.investi ? ' · ' + pct(x.pv / x.investi * 100) : '') + '</span></div></div>'
+        + '<div class="pru"><div><span>Prix de revient</span><b>' + usd(x.pruUsd) + '</b></div><div><span>en euros</span><b>' + eur(pruE, pruE < 100 ? 2 : 0) + '</b></div></div>'
+        + '<div class="note">' + n(x.qte, sym === 'BTC' ? 6 : 4) + ' ' + sym + ' · ' + eur(x.investi) + ' investis</div></section>';
+    };
+    return '<section class="carte"><h2>Portefeuille</h2><div class="gros">' + eur(C.valeur) + '</div><div class="sous">BTC + LINK · cours du ' + date(C.coursLe) + '</div></section>'
+      + coin('BTC', 'Bitcoin', '#f7931a', b, b.pru, eur(b.cours, 0))
+      + coin('LINK', 'Chainlink', '#2a5ada', l, l.pruEur, usd(l.coursUsd) + ' · ' + eur(l.cours))
+      + '<section class="carte"><h2>Règles du LINK (en dollars)</h2>' + ligne('Stop fixe', usd(R.stop, 1), 'à confirmer') + ligne('Achat (1×/mois)', 'sous ' + usd(R.achatSous, 0), 'pas avant janvier') + ligne('Stop au prix de revient', 'à ' + usd(R.stopAuPru, 0))
+      + (R.ventes || []).map(function (v) { return ligne('Palier', esc(v)); }).join('') + (g(J, 'bilan.link.signal') ? '<div class="alerte"><i></i><div>' + esc(g(J, 'bilan.link.signal')) + '</div></div>' : '') + '</section>'
+      + '<p class="note">' + esc(C.pruUsdNote || '') + '</p>';
+  }
+
+  /* ── Placements ── */
+  function placements() {
+    var P = J.pea || {}, L = J.livret || {}, M = L.matelas || {}, T = J.trading || {}, TC = g(J, 'bilan.tradingComptes') || [], F = J.frais;
+    var h = '<section class="carte"><h2>PEA · Fortuneo</h2><div class="gros" style="font-size:32px">' + eur(P.valeur) + '</div><div class="sous">Versé <b>' + eur(P.verse) + '</b> · <span class="' + cls(P.valeur - P.verse) + '">' + eurS(P.valeur - P.verse) + '</span></div>'
+      + ligne('Titres', eur(P.titres), 'cours du ' + date(P.coursDu)) + ligne('Espèces', eur(P.especes)) + '</section>';
+    h += '<section class="carte"><h2>Livret A · matelas</h2><div class="gros" style="font-size:32px">' + eur(L.solde) + '</div>' + barre(M.pct, '#8e6bdb')
+      + '<div class="sous"><b>' + n(M.pct, 0) + ' %</b> du matelas de ' + eur(M.cible, 0) + ' · il manque ' + eur(M.reste, 0) + ' · taux ' + n((L.taux || 0) * 100, 1) + ' %</div></section>';
+    h += '<section class="carte"><h2>Trading · ' + eur(T.capital) + '</h2>' + TC.map(function (c) { return ligne(esc(c.nom) + (c.note ? '<em>' + esc(c.note.toLowerCase()) + '</em>' : ''), eur(c.solde), '<span class="' + cls(c.varPct) + '">' + pct(c.varPct, 2) + '</span> ce mois'); }).join('')
+      + (T.mois || []).map(function (m) { return ligne(esc(mois(m.iso)), '<span class="' + cls(m.pnl) + '">' + eurS(m.pnl) + '</span>'); }).join('') + '</section>';
+    if (F) h += '<section class="carte"><h2>Frais ' + F.an + ' · ' + eur(F.total) + '</h2>' + F.lignes.map(function (x) { return ligne(esc(x.poste) + '<em>' + esc(x.detail) + '</em>', eur(x.montant) + (x.estime ? '<em>estimé</em>' : '')); }).join('')
+      + (F.pctCrypto != null ? '<p class="note">Crypto : ' + n(F.pctCrypto, 2) + ' % de tes achats en frais. ' + esc(F.note) + '</p>' : '') + '</section>';
+    return h;
+  }
+
+  /* ── Plan (façon M1 Finance) ── */
+  function plan() {
+    var Bi = J.bilan || {}, Au = Bi.audit || {}, LV = Bi.livretAVerser || {}, MS = Bi.cibleMoisSuivant || {}, P = J.plan || {};
+    var NOMS = { btc: 'Bitcoin', link: 'Chainlink', pea: 'PEA', livret: 'Livret A' };
+    var h = '<div class="gros-plan"><span>Livret A de ' + esc(mois(LV.mois)) + ' à verser après la paie</span><b>' + eur(LV.montant) + '</b><small>+ ' + esc(LV.plus || '') + '</small></div>';
+    h += '<section class="carte"><h2>' + esc(mois(Bi.mois)) + ' · ' + esc(Bi.planEnVigueur || '') + ' · en cours</h2>' + (Au.lignes || []).map(function (x) {
+      // mois en cours : versé jusqu'ici et cible, sans écart ni score (la paie n'est peut-être pas encore arrivée)
+      return ligne(NOMS[x.poche] || x.poche, x.aVenir ? '<span class="dim">à venir</span>' : eur(x.verse), 'cible ' + eur(x.cible));
+    }).join('') + '<p class="note">Versé jusqu’ici. Le mois se juge à la fin, dans le bilan mensuel.</p></section>';
+    h += '<section class="carte"><h2>' + esc(mois(MS.iso)) + ' · plan 4.0</h2>' + ['btc', 'link', 'pea', 'livret'].map(function (k) {
+      var v = MS[k] || 0, p = P.disponible ? v / P.disponible * 100 : 0;
+      return '<div class="env" style="border-color:#1c2a40"><div class="env-h"><b>' + NOMS[k] + (k === 'btc' && MS.dimanches ? ' <span class="dim">· 25 € × ' + MS.dimanches + ' dimanches</span>' : '') + '</b><strong>' + eur(v) + '</strong></div>' + barre(p, { btc: '#f6a623', link: '#3a7bd5', pea: '#2bb3a3', livret: '#8e6bdb' }[k]) + '</div>';
+    }).join('') + '<p class="note">Disponible ' + eur(P.disponible) + ' par mois · salaire de base ' + eur(g(P, 'base.salaire'), 0) + '</p></section>';
+    if ((Bi.aConfirmer || []).length) h += '<section class="carte"><h2>À confirmer par toi</h2>' + Bi.aConfirmer.map(function (x) { return '<div class="alerte"><i style="background:#8fb3ff"></i><div>' + esc(x) + '</div></div>'; }).join('') + '</section>';
+    if ((Bi.janvier || []).length) h += '<section class="carte"><h2>Point de janvier 2027</h2>' + Bi.janvier.map(function (x, i) { return '<div class="liste"><span>' + (i + 1) + '</span><div>' + esc(x) + '</div></div>'; }).join('') + '</section>';
+    return h;
+  }
+
+  var PAGES = { accueil: accueil, budget: budget, crypto: crypto, placements: placements, plan: plan };
+  function dessinerOnglets() {
+    document.getElementById('onglets').innerHTML = ONGLETS.map(function (o) {
+      return '<button data-o="' + o[0] + '" class="' + (o[0] === onglet ? 'on' : '') + '"><svg viewBox="0 0 24 24">' + o[2] + '</svg>' + o[1] + '</button>';
+    }).join('');
+  }
+  function dessiner() {
+    dessinerOnglets();
+    var el = document.getElementById('page');
+    el.className = 'p-' + onglet;
+    document.getElementById('titre').textContent = ONGLETS.filter(function (o) { return o[0] === onglet; })[0][1];
+    if (!J) return;
+    if (J.erreur) { el.innerHTML = '<div class="vide">' + esc(J.erreur) + '</div>'; return; }
+    try { el.innerHTML = PAGES[onglet](); } catch (e) { el.innerHTML = '<div class="vide">Cette page n’a pas pu s’afficher (' + esc(e.message) + ').</div>'; }
+    document.getElementById('maj').textContent = J.genereLe ? (SOURCE ? 'Chiffres publiés ' : 'Chiffres du PC ') + depuis(J.genereLe) + (J._horsLigne ? ' · hors ligne' : '') : '';
+    if (SOURCE && onglet === 'accueil') el.insertAdjacentHTML('beforeend', '<div class="bas"><button data-verrouiller>Verrouiller ce téléphone</button></div>');
+  }
+  /* Mot de passe demandé une fois ; le téléphone garde la clé (pas le mot de passe). */
+  var verrouille = false;
+  function verrou(message) {
+    verrouille = true;
+    var page = document.getElementById('page');
+    page.className = ''; document.getElementById('onglets').style.display = 'none'; document.getElementById('titre').textContent = 'Command Center';
+    page.innerHTML = '<form class="verrou" id="f-verrou"><div class="logo">CC</div><h2>Tes chiffres sont chiffrés</h2><p>Entre le mot de passe choisi dans le Command Center. Ce téléphone s’en souviendra.</p>'
+      + '<input type="password" id="mdp" autocomplete="current-password" placeholder="Mot de passe" required><button type="submit">Déverrouiller</button><div class="err" id="err">' + esc(message || '') + '</div></form>';
+    document.getElementById('f-verrou').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var err = document.getElementById('err'); err.textContent = 'Un instant…';
+      cleDepuisMotDePasse(document.getElementById('mdp').value, enveloppe).then(function (cle) {
+        return dechiffrer(cle, enveloppe).then(function (d) {
+          stock.ecrire('cc-cle', vers64(cle)); stock.ecrire('cc-sel', enveloppe.sel);
+          J = d; verrouille = false; document.getElementById('onglets').style.display = ''; dessiner();
+        });
+      }).catch(function () { err.textContent = 'Mot de passe incorrect.'; });
+    });
+  }
+  function ouvrirEnveloppe(env, horsLigne) {
+    enveloppe = env;
+    var cle = stock.lire('cc-cle'), sel = stock.lire('cc-sel');
+    if (!cle || sel !== env.sel) { verrou(cle && sel !== env.sel ? 'Le mot de passe a changé sur le PC : entre le nouveau.' : ''); return Promise.resolve(); }
+    return dechiffrer(b64(cle), env).then(function (d) { J = d; J._horsLigne = horsLigne; }, function () { stock.ecrire('cc-cle', null); verrou('Entre ton mot de passe à nouveau.'); });
+  }
+  function charger() {
+    var b = document.getElementById('rafraichir'); b.classList.add('tourne');
+    if (SOURCE) {   // appli publiée : fichier chiffré sur GitHub, ou le dernier gardé si pas de réseau
+      return fetch(SOURCE + '?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function (env) { stock.ecrire('cc-dernier', JSON.stringify(env)); return ouvrirEnveloppe(env, false); }, function () {
+          var v = stock.lire('cc-dernier');
+          if (v) return ouvrirEnveloppe(JSON.parse(v), true);
+          J = { erreur: 'Pas de connexion, et aucun chiffre gardé sur ce téléphone pour l’instant.' };
+        })
+        .then(function () { b.classList.remove('tourne'); if (!verrouille) dessiner(); });
+    }
+    return fetch('donnees', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) { J = d; }, function () {
+      if (!J) J = { erreur: 'Le PC ne répond pas : le Command Center est-il ouvert, et es-tu sur le Wi-Fi de la maison ?' };
+      document.getElementById('maj').textContent = 'PC injoignable';
+    }).then(function () { b.classList.remove('tourne'); dessiner(); });
+  }
+  document.getElementById('onglets').addEventListener('click', function (e) {
+    var t = e.target.closest('[data-o]'); if (!t) return;
+    onglet = t.getAttribute('data-o'); try { localStorage.setItem('cc-tel-onglet', onglet); } catch (x) { /* rien */ }
+    window.scrollTo(0, 0); dessiner();
+  });
+  document.getElementById('rafraichir').addEventListener('click', function () { if (!verrouille) charger(); });
+  document.getElementById('page').addEventListener('click', function (e) {
+    if (e.target.closest('[data-verrouiller]')) { stock.ecrire('cc-cle', null); stock.ecrire('cc-dernier', null); location.reload(); }
+  });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && !verrouille) charger(); });
+  setInterval(function () { if (!document.hidden && !verrouille) charger(); }, 60000);
+  dessinerOnglets(); charger();
+})();
+</script>
+</body>
+</html>
