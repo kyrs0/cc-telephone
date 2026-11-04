@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Command Center">
 <meta name="theme-color" content="#0e0f11">
 <meta name="robots" content="noindex">
+<meta name="cc-version" content="8a47848f70cd7552">
 <meta name="cc-donnees" content="https://raw.githubusercontent.com/kyrs0/cc-telephone/main/donnees.chiffre.json">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icone.png">
@@ -53,6 +54,9 @@
   .alerte i { width: 8px; height: 8px; border-radius: 50%; background: var(--or); margin-top: 7px; flex: 0 0 auto; }
   .vide { color: var(--doux); text-align: center; padding: 40px 10px; }
   .grille2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; } .grille2 .carte { margin-bottom: 0; }
+  .seg { display: inline-flex; background: #17181b; border: 1px solid #232428; border-radius: 999px; padding: 3px; }
+  .seg button { border: 0; background: transparent; color: #9aa0aa; padding: 6px 14px; border-radius: 999px; font: 600 13px var(--sys); }
+  .seg button.on { background: var(--texte); color: var(--fond); }
   .kpi span { display: block; color: var(--doux); font-size: 12px; } .kpi b { font: 700 20px/1.2 var(--titre); font-variant-numeric: tabular-nums; }
   /* Budget : façon Actual (violet) */
   .p-budget .carte { background: #17151c; border-color: #2a2433; } .p-budget h2 { color: #b28ce8; }
@@ -162,13 +166,26 @@
   }
 
   /* ── Accueil (façon Finary) ── */
+  var vue = stock.lire('cc-vue') || 'net';
   function accueil() {
     var C = J.capital || {}, A = C.auCours || {}, Ob = J.objectif || {}, B = J.banque || {}, cou = g(J, 'bilan.couloir') || {};
     var p100 = A.total ? A.total / (Ob.montant || 100000) * 100 : 0;
-    var h = '<section class="carte"><h2>Capital investi</h2><div class="gros">' + eur(A.total, 0) + '</div>'
+    var h = '';
+    // le même grand chiffre que l'Accueil du PC (Net, Brut, Financier) : le relevé du mois, puis l'estimation du jour
+    var Ac = J.accueil;
+    if (Ac) {
+      var rel = Ac.releve[vue], pre = Ac.precedent[vue], est = Ac.estime[vue], varM = rel != null && pre != null ? rel - pre : null;
+      var NOMS_VUE = { net: 'Patrimoine net', brut: 'Patrimoine brut', financier: 'Patrimoine financier' };
+      h += '<section class="carte"><div class="seg">' + ['net', 'brut', 'financier'].map(function (k) { return '<button data-vue="' + k + '" class="' + (vue === k ? 'on' : '') + '">' + { net: 'Net', brut: 'Brut', financier: 'Financier' }[k] + '</button>'; }).join('') + '</div>'
+        + '<h2 style="margin-top:12px">' + NOMS_VUE[vue] + '</h2><div class="gros">' + eur(rel, 0) + '</div>'
+        + (varM != null ? '<div class="sous"><span class="' + cls(varM) + '" style="font-weight:650">' + eurS(varM, 0) + '</span> sur 1 mois · ' + (vue === 'financier' ? 'capital du 10 ' + esc(mois(Ac.releve.moisFinancier)) : 'relevé de ' + esc(mois(Ac.releve.mois))) + '</div>' : '')
+        + '<div class="sous">Estimé aujourd’hui <b>' + eur(est, 0) + '</b> <span class="' + cls(est - rel) + '">' + eurS(est - rel, 0) + '</span></div></section>';
+    }
+    h += '<section class="carte"><h2>Capital investi</h2><div class="gros">' + eur(A.total, 0) + '</div>'
       + '<div class="sous">Figé au 10 (' + esc(mois(g(C, 'du10.mois'))) + ') : <b>' + eur(g(C, 'du10.total'), 0) + '</b> · banque à part</div>'
       + barre(p100, 'linear-gradient(90deg,#3ecf8e,#2bb3a3)') + '<div class="sous"><b>' + n(p100, 1) + ' %</b> de ' + eur(Ob.montant || 100000, 0) + ' · objectif le ' + date(Ob.date) + '</div></section>';
-    h += '<div class="grille2"><section class="carte kpi"><span>Patrimoine net</span><b>' + eur(J.patrimoineNet, 0) + '</b></section>'
+    var Mt = g(J, 'livret.matelas') || {};
+    h += '<div class="grille2"><section class="carte kpi"><span>Matelas (Livret A)</span><b>' + n(Mt.pct, 0) + ' %</b><span>' + eur(Mt.solde, 0) + ' / ' + eur(Mt.cible, 0) + '</span></section>'
       + '<section class="carte kpi"><span>Investi / mois (3 mois)</span><b>' + eur(Ob.investiParMois3Mois, 0) + '</b></section></div><div style="height:12px"></div>';
     h += '<section class="carte"><h2>Répartition</h2>' + ligne('Trading', eur(A.trading)) + ligne('Crypto', eur(A.crypto)) + ligne('PEA', eur(A.pea)) + ligne('Livret A', eur(A.livret)) + '</section>';
     h += '<section class="carte"><h2>Banque · ' + eur(B.total) + '</h2>' + (B.comptes || []).map(function (c) { return ligne(esc(c.nom), '<span class="' + (c.solde < 0 ? 'neg' : '') + '">' + eur(c.solde) + '</span>'); }).join('') + '</section>';
@@ -339,7 +356,16 @@
     var b = document.getElementById('rafraichir'); b.classList.add('tourne');
     if (SOURCE) {   // appli publiée : fichier chiffré sur GitHub, ou le dernier gardé si pas de réseau
       return fetch(SOURCE + '?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-        .then(function (env) { stock.ecrire('cc-dernier', JSON.stringify(env)); return ouvrirEnveloppe(env, false); }, function () {
+        .then(function (env) {
+          // une nouvelle version de l'appli est en ligne : on la recharge (une seule fois par session)
+          var maVersion = (document.querySelector('meta[name="cc-version"]') || {}).content;
+          var dejaRecharge = false; try { dejaRecharge = sessionStorage.getItem('cc-recharge') === env.appli; } catch (e) { /* rien */ }
+          if (env.appli && env.appli !== maVersion && !dejaRecharge) {
+            try { sessionStorage.setItem('cc-recharge', env.appli); } catch (e) { /* rien */ }
+            location.replace(location.pathname + '?v=' + env.appli); return new Promise(function () {});
+          }
+          stock.ecrire('cc-dernier', JSON.stringify(env)); return ouvrirEnveloppe(env, false);
+        }, function () {
           var v = stock.lire('cc-dernier');
           if (v) return ouvrirEnveloppe(JSON.parse(v), true);
           J = { erreur: 'Pas de connexion, et aucun chiffre gardé sur ce téléphone pour l’instant.' };
@@ -359,6 +385,8 @@
   document.getElementById('rafraichir').addEventListener('click', function () { if (!verrouille) charger(); });
   document.getElementById('page').addEventListener('click', function (e) {
     if (e.target.closest('[data-verrouiller]')) { stock.ecrire('cc-cle', null); stock.ecrire('cc-dernier', null); location.reload(); }
+    var v = e.target.closest('[data-vue]');
+    if (v) { vue = v.getAttribute('data-vue'); stock.ecrire('cc-vue', vue); dessiner(); }
   });
   document.addEventListener('visibilitychange', function () { if (!document.hidden && !verrouille) charger(); });
   setInterval(function () { if (!document.hidden && !verrouille) charger(); }, 60000);
