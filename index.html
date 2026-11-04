@@ -73,8 +73,17 @@
   .gros-plan span { color: #a9bde3; font-size: 13px; } .gros-plan b { display: block; font: 750 30px/1.15 var(--titre); margin: 4px 0; font-variant-numeric: tabular-nums; } .gros-plan small { color: #a9bde3; }
   /* Placements */
   .p-placements .carte h2 { color: #7cc4ff; }
+  /* Stats : façon Apple Santé (une couleur par mesure) */
+  .p-stats .carte { background: #1c1c1e; border-color: #2c2c2e; }
+  .p-stats h2 { display: flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-size: 15px; }
+  .p-stats h2 i { width: 22px; height: 22px; border-radius: 6px; display: inline-block; flex: 0 0 auto; }
+  .p-stats h2 em { margin-left: auto; font-style: normal; color: var(--doux); font-size: 12px; font-weight: 500; }
+  .val { font: 750 32px/1.1 var(--titre); font-variant-numeric: tabular-nums; } .val small { font: 600 15px var(--sys); color: var(--doux); margin-left: 4px; }
+  .mb { display: flex; align-items: flex-end; gap: 5px; height: 54px; margin-top: 10px; }
+  .mb div { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; height: 100%; justify-content: flex-end; }
+  .mb i { width: 100%; border-radius: 4px 4px 2px 2px; min-height: 3px; } .mb span { font-size: 9.5px; color: var(--doux); }
   /* barre d'onglets */
-  nav { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr); background: rgba(14,15,17,.92); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  nav { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(6, 1fr); background: rgba(14,15,17,.92); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
     border-top: 1px solid var(--bord); padding: 6px 4px calc(env(safe-area-inset-bottom) + 6px); }
   nav button { border: 0; background: none; color: #7d828c; font: 600 10.5px/1.2 var(--sys); display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 0; }
   nav button svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -101,6 +110,7 @@
     ['budget', 'Budget', '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h4"/>'],
     ['crypto', 'Crypto', '<circle cx="12" cy="12" r="8.5"/><path d="M9.5 8h4a2 2 0 0 1 0 4h-4V8zm0 4h4.5a2 2 0 0 1 0 4H9.5v-4zM11 6.5V8m0 8v1.5"/>'],
     ['placements', 'Placements', '<path d="M4 19V11M9.5 19V6M15 19v-5M20.5 19V9"/>'],
+    ['stats', 'Stats', '<path d="M3 12h4l2.5-6 4 12 2.5-6H21"/>'],
     ['plan', 'Plan', '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5V12l6 6"/>'],
   ];
   var J = null, onglet = 'accueil';
@@ -242,7 +252,48 @@
     return h;
   }
 
-  var PAGES = { accueil: accueil, budget: budget, crypto: crypto, placements: placements, plan: plan };
+  /* ── Stats (façon Apple Santé, comme la page Stats du CC) ── */
+  function stats() {
+    var S = J.stats, F = J.frais, moisCourant = g(J, 'bilan.mois');
+    if (!S) return '<div class="vide">Les stats ne sont pas encore publiées : ouvre le Command Center sur le PC.</div>';
+    var COUL = { epargne: '#30d158', rendement: '#ff9f0a', liquidite: '#0a84ff', depenses: '#ff375f', trading: '#40c8e0', regularite: '#bf5af2', records: '#ffd60a', frais: '#ff6961' };
+    var titre = function (k, nom, quand) { return '<h2 style="color:' + COUL[k] + '"><i style="background:' + COUL[k] + '"></i>' + nom + (quand ? '<em>' + esc(quand) + '</em>' : '') + '</h2>'; };
+    var COURT = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+    var court = function (iso) { return COURT[+iso.split('-')[1] - 1]; };
+    // mini-barres ; couleur(v, i) facultative
+    var barres = function (vals, etiquettes, couleur) {
+      var max = Math.max.apply(null, [1].concat(vals.map(function (v) { return Math.abs(v || 0); })));
+      return '<div class="mb">' + vals.map(function (v, i) { return '<div><i style="height:' + Math.max(4, Math.abs(v || 0) / max * 100).toFixed(0) + '%;background:' + (typeof couleur === 'function' ? couleur(v, i) : couleur) + '"></i><span>' + esc(etiquettes[i] || '') + '</span></div>'; }).join('') + '</div>';
+    };
+    var E = S.epargne, finis = E.mois.filter(function (m) { return m.iso !== moisCourant; });
+    var moy = finis.length ? finis.reduce(function (s, m) { return s + m.pct; }, 0) / finis.length : E.moyenne;
+    var h = '<section class="carte">' + titre('epargne', 'Épargne', finis.length + ' mois terminés') + '<div class="val">' + n(moy, 0) + '<small>% de la paie</small></div>'
+      + barres(E.mois.map(function (m) { return m.pct; }), E.mois.map(function (m) { return court(m.iso); }), function (v, i) { return E.mois[i].iso === moisCourant ? '#3a3a3c' : v >= 30 ? '#30d158' : v >= 20 ? '#ffd60a' : '#ff453a'; })
+      + '<p class="note">La cible est 30 %. Le mois en cours (gris) attend la paie.</p></section>';
+    var Rd = S.rendement;
+    h += '<section class="carte">' + titre('rendement', 'Rendement', '6 mois') + '<div class="val ' + cls(Rd.gain6Mois) + '">' + eurS(Rd.gain6Mois, 0) + '<small>hors versements</small></div>'
+      + Rd.poches.map(function (p) { return ligne(esc(p.nom), '<span class="' + cls(p.gain) + '">' + eurS(p.gain, 0) + '</span>', pct(p.pct)); }).join('') + '<p class="note">' + esc(Rd.phrase) + '.</p></section>';
+    var Lq = S.liquidite;
+    h += '<section class="carte">' + titre('liquidite', 'Liquidité', 'aujourd’hui') + '<div class="val">' + n(Lq.mois, 1) + '<small>mois de charges</small></div>' + barre(Lq.mois / Lq.cible * 100, COUL.liquidite)
+      + '<div class="sous">' + eur(Lq.liquide, 0) + ' disponibles (banque + Livret A) pour ' + eur(Lq.charges, 0) + ' de charges fixes par mois · cible ' + Lq.cible + ' mois</div></section>';
+    var Dp = S.depenses, cumul = (Dp.enveloppes[0] || { sixMois: [] }).sixMois.map(function (x, i) { return Dp.enveloppes.reduce(function (s, e) { return s + (e.sixMois[i] || 0); }, 0); });
+    h += '<section class="carte">' + titre('depenses', 'Dépenses variables', mois(Dp.mois)) + '<div class="val">' + eur(Dp.total, 0) + '<small>sur ' + eur(Dp.budget, 0) + '</small></div>'
+      + barres(cumul, E.mois.map(function (m) { return court(m.iso); }).slice(-cumul.length), function (v) { return v > Dp.budget ? '#ff453a' : '#ff375f'; })
+      + Dp.enveloppes.map(function (e) { return ligne(esc(e.nom), eur(e.ceMois, 0), 'budget ' + eur(e.budget, 0)); }).join('') + '</section>';
+    var Tr = S.trading;
+    h += '<section class="carte">' + titre('trading', 'Trading', 'cette année') + '<div class="val ' + cls(Tr.annee) + '">' + eurS(Tr.annee, 0) + '</div>'
+      + barres(Tr.mois.map(function (m) { return m.pnl; }), Tr.mois.map(function (m) { return court(m.iso); }), function (v) { return v >= 0 ? '#30d158' : '#ff453a'; })
+      + '<div class="sous">Série verte : <b>' + Tr.serieVerte + ' mois</b></div></section>';
+    var Rg = S.regularite, Rc = S.records;
+    h += '<div class="grille2"><section class="carte">' + titre('regularite', 'Régularité') + '<div class="val">' + n(Rg.pct, 0) + '<small>%</small></div><div class="sous">' + Rg.jours + ' jours avec un mouvement sur ' + Rg.ecoules + '</div></section>'
+      + '<section class="carte">' + titre('records', 'Record') + '<div class="val">' + (Rc.meilleurMois ? eurS(Rc.meilleurMois.gain, 0) : '—') + '</div><div class="sous">meilleur mois du capital' + (Rc.meilleurMois ? ' · ' + esc(Rc.meilleurMois.mois) : '') + '</div></section></div><div style="height:12px"></div>';
+    if (F) h += '<section class="carte">' + titre('frais', 'Frais', String(F.an)) + '<div class="val">' + eur(F.total) + '</div>' + (F.pctCrypto != null ? '<div class="sous">Crypto : <b>' + n(F.pctCrypto, 2) + ' %</b> de tes achats</div>' : '')
+      + F.lignes.map(function (x) { return ligne(esc(x.poste), eur(x.montant) + (x.estime ? '<em>estimé</em>' : '')); }).join('') + '</section>';
+    if (S.cycle) h += '<section class="carte">' + titre('liquidite', 'Cycle de paie') + '<div class="val">J' + S.cycle.creuxJour + '</div><div class="sous">jour du cycle où tes comptes sont au plus bas (moyenne de ' + S.cycle.cycles + ' cycles)</div></section>';
+    return h;
+  }
+
+  var PAGES = { accueil: accueil, budget: budget, crypto: crypto, placements: placements, stats: stats, plan: plan };
   function dessinerOnglets() {
     document.getElementById('onglets').innerHTML = ONGLETS.map(function (o) {
       return '<button data-o="' + o[0] + '" class="' + (o[0] === onglet ? 'on' : '') + '"><svg viewBox="0 0 24 24">' + o[2] + '</svg>' + o[1] + '</button>';
