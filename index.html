@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Command Center">
 <meta name="theme-color" content="#0e0f11">
 <meta name="robots" content="noindex">
-<meta name="cc-version" content="8a47848f70cd7552">
+<meta name="cc-version" content="6d9e53fdda352d8b">
 <meta name="cc-donnees" content="https://raw.githubusercontent.com/kyrs0/cc-telephone/main/donnees.chiffre.json">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icone.png">
@@ -17,9 +17,11 @@
 <title>Command Center</title>
 <!-- Vue téléphone du Command Center V4 (03/11/2026, Tom : « je veux avoir le design du Command
      Center sur mon tél »). Servie par telephone.js sur le Wi-Fi de la maison, en lecture seule ;
-     les chiffres viennent de « Command Center — chiffres.json ». Un onglet par page du CC, chacun
-     dans le style de sa page : Accueil façon Finary, Budget façon Actual, Crypto façon CoinGecko,
-     Placements, Plan façon M1 Finance. -->
+     les chiffres viennent de « Command Center — chiffres.json ». Depuis le 04/11/2026 (choix de Tom,
+     « un grand truc, vraiment, avec des graphiques ») : Capital (le grand chiffre, sa courbe et le couloir,
+     objectifs, répartition, patrimoine, mes poches), Situation (ce qui coince, ce qui va), À faire (le mois
+     dans l’ordre du guide v12), Dépenses (dépensé / prévu, prélèvements de la paie) et Stats façon Apple
+     Santé. Le moteur calcule tout (aFaire, situation, historique) ; ici on ne fait que dessiner. -->
 <style>
   :root { --fond: #0e0f11; --carte: #15161a; --bord: #222429; --texte: #f3f4f6; --doux: #8d929c; --pos: #3ecf8e; --neg: #ff6b6b; --or: #f5b83d;
     --sys: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Roboto, sans-serif;
@@ -58,25 +60,74 @@
   .seg button { border: 0; background: transparent; color: #9aa0aa; padding: 6px 14px; border-radius: 999px; font: 600 13px var(--sys); }
   .seg button.on { background: var(--texte); color: var(--fond); }
   .kpi span { display: block; color: var(--doux); font-size: 12px; } .kpi b { font: 700 20px/1.2 var(--titre); font-variant-numeric: tabular-nums; }
-  /* Budget : façon Actual (violet) */
-  .p-budget .carte { background: #17151c; border-color: #2a2433; } .p-budget h2 { color: #b28ce8; }
-  .env { padding: 10px 0; border-top: 1px solid #2a2433; } .env:first-of-type { border-top: 0; }
+  /* Dépenses : le Budget façon Actual (violet) */
+  .p-depenses .carte { background: #17151c; border-color: #2a2433; } .p-depenses h2 { color: #b28ce8; } .p-depenses .ligne, .p-depenses .pli { border-color: #2a2433; }
+  .heros > span { color: var(--doux); font-size: 13px; } .heros .gros { margin: 2px 0; }
+  .env { padding: 10px 0; border-top: 1px solid var(--bord); } .env:first-of-type { border-top: 0; }
   .env-h { display: flex; justify-content: space-between; gap: 10px; } .env-h b { font-weight: 650; } .env-h strong { font-variant-numeric: tabular-nums; }
   .env small { color: var(--doux); font-size: 12px; } .env .barre { margin: 7px 0 3px; background: #2a2433; height: 6px; }
-  /* Crypto : façon CoinGecko (vert) */
-  .p-crypto .carte { background: #0f1512; border-color: #1d2a22; } .p-crypto h2 { color: #6fdc3a; }
+  /* lignes à déplier (mes poches, abonnements, charges fixes…) */
+  .pli { border-top: 1px solid var(--bord); } .pli:first-of-type { border-top: 0; } .carte > .pli:only-child { border-top: 0; }
+  .pli summary { list-style: none; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 10px 0; cursor: pointer; }
+  .pli summary::-webkit-details-marker { display: none; }
+  .pli summary b { font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pli summary b::after { content: "›"; display: inline-block; margin-left: 8px; color: var(--doux); transition: transform .15s; }
+  .pli[open] summary b::after { transform: rotate(90deg); }
+  .pli-t { font-weight: 600; min-width: 0; } .pli-t em { display: block; font-style: normal; font-size: 12px; color: var(--doux); font-weight: 500; }
+  .pli-c { padding: 0 0 10px; }
+  /* À faire : façon M1 Finance (bleu nuit) */
+  .p-afaire .carte { background: #0f1828; border-color: #1c2a40; } .p-afaire h2 { color: #8fb3ff; } .p-afaire .ligne, .p-afaire .pli, .p-afaire .tache, .p-afaire .env { border-color: #1c2a40; }
+  .tache { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--bord); } .tache:first-of-type { border-top: 0; }
+  .tache > i { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #3a4a66; flex: 0 0 auto; display: grid; place-items: center; font: 800 12px/1 var(--sys); font-style: normal; color: var(--fond); }
+  .tache.fait > i { background: var(--pos); border-color: var(--pos); }
+  .tache > div { min-width: 0; flex: 1; } .tache b { display: block; font-weight: 650; } .tache small { display: block; color: var(--doux); font-size: 12px; margin-top: 1px; }
+  .tache strong { font-variant-numeric: tabular-nums; white-space: nowrap; } .tache.fait b, .tache.fait strong { color: var(--doux); }
+  .or { color: var(--or); }
+  nav button { position: relative; }
+  .pastille { position: absolute; top: 0; left: calc(50% + 6px); min-width: 17px; height: 17px; border-radius: 9px; background: var(--neg); color: #fff; font: 700 10.5px/17px var(--sys); padding: 0 4px; }
+  /* graphiques (SVG dessinés dans la page) */
+  .graph { display: block; width: 100%; height: auto; margin-top: 12px; overflow: visible; }
+  .graph text { fill: var(--doux); font: 600 10px var(--sys); } .graph text.g-futur { fill: #5d626b; }
+  .g-ligne { stroke: #26282d; stroke-width: 1; } .g-bande { fill: rgba(124,196,255,.13); stroke: rgba(124,196,255,.35); stroke-width: 1; stroke-dasharray: 3 3; }
+  .legende { display: flex; gap: 14px; margin-top: 6px; font-size: 12px; color: var(--doux); } .legende i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  .legende .l-bande { background: rgba(124,196,255,.25); border: 1px dashed rgba(124,196,255,.6); }
+  .anneau { display: block; flex: 0 0 auto; } .anneau .a-v { fill: var(--texte); font: 750 19px var(--titre); } .anneau .a-s { fill: var(--doux); font: 600 11px var(--sys); }
+  .duo { display: flex; align-items: center; gap: 16px; } .duo > div { flex: 1; min-width: 0; text-align: center; } .duo > div > small { display: block; color: var(--doux); font-size: 12px; margin-top: 4px; } .duo .anneau { margin: 0 auto; }
+  .duo > .leg-v, .duo > div:has(.gros) { text-align: left; }
+  .leg-v > div { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 14px; } .leg-v i { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; display: inline-block; }
+  .leg-v span { flex: 1; color: var(--doux); } .leg-v b { font-variant-numeric: tabular-nums; } .leg-v em { font-style: normal; color: var(--doux); font-size: 12px; min-width: 34px; text-align: right; }
+  .leg-v .lv-b { display: block; padding: 6px 0; } .lv-b span { display: inline-flex; align-items: center; gap: 7px; } .lv-b b { float: right; font-size: 13px; }
+  .jauge { position: relative; height: 8px; border-radius: 99px; background: #2a2c31; margin: 7px 0 3px; overflow: hidden; } .jauge i { display: block; height: 100%; border-radius: 99px; }
+  .jauge u { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #fff; opacity: .85; }
+  .grille3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; } .grille3 .carte { margin: 0; padding: 12px 10px; }
+  .grille3 .kpi b { font-size: 18px; } .grille3 .kpi span { font-size: 11px; }
+  .heros-cap > span { color: var(--doux); font-size: 13px; } .heros-cap .gros { font-size: 46px; margin: 2px 0; }
+  .couloir { position: relative; height: 14px; border-radius: 99px; background: linear-gradient(90deg, rgba(255,107,107,.35), rgba(62,207,142,.45) 40%, rgba(62,207,142,.45) 70%, rgba(124,196,255,.5)); margin: 8px 0 4px; }
+  .couloir i { position: absolute; top: -5px; width: 6px; height: 24px; border-radius: 3px; background: #fff; transform: translateX(-50%); box-shadow: 0 0 0 2px #15161a; }
+  .couloir-l { display: flex; justify-content: space-between; font-size: 11px; color: var(--doux); }
+  .pt { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 8px; vertical-align: 0; }
+  /* Situation */
+  .sit { display: block; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--bord); color: var(--texte); padding: 11px 0 11px 12px; font: inherit; position: relative; }
+  .sit:first-of-type { border-top: 0; } .sit::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 2px; background: var(--c); }
+  .sit-h { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; } .sit-h span { font-weight: 650; } .sit-h i { display: none; } .sit-h b { color: var(--c); font-variant-numeric: tabular-nums; text-align: right; }
+  .sit small { display: block; color: var(--doux); font-size: 12px; margin-top: 2px; } .sit .barre { height: 6px; margin: 6px 0 2px; }
+  /* À faire : dimanches, étiquettes, relevés */
+  .dims { display: flex; gap: 8px; margin: 4px 0 2px; } .dims i { flex: 1; height: 10px; border-radius: 99px; background: #23324d; } .dims i.on { background: #f6a623; }
+  .et { display: inline-block; font: 650 10.5px/1 var(--sys); padding: 3px 7px; border-radius: 99px; background: #23252a; color: var(--doux); vertical-align: 2px; margin-left: 4px; }
+  .et.or { background: rgba(245,184,61,.16); color: var(--or); } .et.bleu { background: rgba(124,196,255,.14); color: #8fb3ff; } .et.vert { background: rgba(62,207,142,.14); color: var(--pos); }
+  .tache b { display: inline; } .tache > div > b { display: block; }
+  .tache.maint > i { border-color: var(--or); border-width: 3px; } .tache.maint > div > b { color: var(--texte); }
+  .tache.auto > i { border-color: #4b6ea8; color: #8fb3ff; font-size: 13px; } .tache.rappel > i { border-style: dashed; }
+  .puces { display: flex; gap: 6px; margin-top: 5px; flex-wrap: wrap; } .puces span { font: 600 11.5px var(--sys); padding: 3px 9px; border-radius: 99px; background: #1b2436; color: var(--doux); } .puces span.ok { background: rgba(62,207,142,.15); color: var(--pos); }
+  .carte h2 em { float: right; font-style: normal; text-transform: none; letter-spacing: 0; color: var(--doux); font-weight: 600; }
+  /* Capital : façon Finary (vert) */
+  .p-capital h2 { color: #6fdcb0; }
+  /* Crypto (dans « Mes poches ») */
   .coin { display: flex; align-items: center; gap: 12px; } .coin .rond { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font: 800 15px/1 var(--titre); color: #fff; flex: 0 0 auto; }
   .coin h3 { margin: 0; font: 700 17px/1.2 var(--titre); } .coin h3 small { color: var(--doux); font: 600 12px var(--sys); margin-left: 6px; }
   .coin .v { margin-left: auto; text-align: right; } .coin .v b { font: 700 18px/1.2 var(--titre); font-variant-numeric: tabular-nums; display: block; }
   .pru { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
-  .pru div { background: #141d18; border-radius: 12px; padding: 10px 12px; } .pru span { display: block; color: var(--doux); font-size: 12px; } .pru b { font: 700 17px/1.3 var(--titre); font-variant-numeric: tabular-nums; }
-  /* Plan : façon M1 Finance (bleu nuit) */
-  .p-plan .carte { background: #0f1828; border-color: #1c2a40; } .p-plan h2 { color: #8fb3ff; }
-  .p-plan .ligne { border-color: #1c2a40; }
-  .gros-plan { background: linear-gradient(135deg, #1b2c4a, #13203a); border: 1px solid #2a3f63; border-radius: 18px; padding: 16px; margin-bottom: 12px; }
-  .gros-plan span { color: #a9bde3; font-size: 13px; } .gros-plan b { display: block; font: 750 30px/1.15 var(--titre); margin: 4px 0; font-variant-numeric: tabular-nums; } .gros-plan small { color: #a9bde3; }
-  /* Placements */
-  .p-placements .carte h2 { color: #7cc4ff; }
+  .pru div { background: #1b1d22; border-radius: 12px; padding: 10px 12px; } .pru span { display: block; color: var(--doux); font-size: 12px; } .pru b { font: 700 17px/1.3 var(--titre); font-variant-numeric: tabular-nums; }
   /* Stats : façon Apple Santé (une couleur par mesure) */
   .p-stats .carte { background: #1c1c1e; border-color: #2c2c2e; }
   .p-stats h2 { display: flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-size: 15px; }
@@ -87,7 +138,7 @@
   .mb div { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; height: 100%; justify-content: flex-end; }
   .mb i { width: 100%; border-radius: 4px 4px 2px 2px; min-height: 3px; } .mb span { font-size: 9.5px; color: var(--doux); }
   /* barre d'onglets */
-  nav { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(6, 1fr); background: rgba(14,15,17,.92); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  nav { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr); background: rgba(14,15,17,.92); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
     border-top: 1px solid var(--bord); padding: 6px 4px calc(env(safe-area-inset-bottom) + 6px); }
   nav button { border: 0; background: none; color: #7d828c; font: 600 10.5px/1.2 var(--sys); display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 0; }
   nav button svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -109,15 +160,15 @@
 <script>
 (function () {
   'use strict';
+  // [id, nom dans la barre, icône, question en titre]
   var ONGLETS = [
-    ['accueil', 'Accueil', '<path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/>'],
-    ['budget', 'Budget', '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h4"/>'],
-    ['crypto', 'Crypto', '<circle cx="12" cy="12" r="8.5"/><path d="M9.5 8h4a2 2 0 0 1 0 4h-4V8zm0 4h4.5a2 2 0 0 1 0 4H9.5v-4zM11 6.5V8m0 8v1.5"/>'],
-    ['placements', 'Placements', '<path d="M4 19V11M9.5 19V6M15 19v-5M20.5 19V9"/>'],
-    ['stats', 'Stats', '<path d="M3 12h4l2.5-6 4 12 2.5-6H21"/>'],
-    ['plan', 'Plan', '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5V12l6 6"/>'],
+    ['capital', 'Capital', '<path d="M4 19V11M9.5 19V6M15 19v-5M20.5 19V9"/>', 'Capital'],
+    ['situation', 'Situation', '<path d="M12 3.5 21 19.5H3z"/><path d="M12 10v4M12 16.8v.2"/>', 'Ce qui coince, ce qui va'],
+    ['afaire', 'À faire', '<rect x="4" y="4" width="16" height="16" rx="4"/><path d="m8.5 12 2.5 2.5 4.5-5"/>', 'Qu’est-ce que j’ai à faire ?'],
+    ['depenses', 'Dépenses', '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h4"/>', 'Dépenses'],
+    ['stats', 'Stats', '<path d="M3 12h4l2.5-6 4 12 2.5-6H21"/>', 'Stats'],
   ];
-  var J = null, onglet = 'accueil';
+  var J = null, onglet = 'capital';
   /* Appli publiée sur GitHub (02-03/11/2026) : les chiffres arrivent chiffrés depuis cette adresse ;
      sans elle (Wi-Fi), ils viennent du PC en clair (« donnees »). */
   var SOURCE = (document.querySelector('meta[name="cc-donnees"]') || {}).content || null;
@@ -138,8 +189,8 @@
       .then(function (o) { return JSON.parse(new TextDecoder().decode(o)); });
   }
   var enveloppe = null;   // le dernier fichier chiffré reçu (gardé sur le téléphone pour le hors ligne)
-  try { onglet = localStorage.getItem('cc-tel-onglet') || 'accueil'; } catch (e) { /* stockage indisponible */ }
-  if (!ONGLETS.some(function (o) { return o[0] === onglet; })) onglet = 'accueil';
+  try { onglet = localStorage.getItem('cc-tel-onglet') || 'capital'; } catch (e) { /* stockage indisponible */ }
+  if (!ONGLETS.some(function (o) { return o[0] === onglet; })) onglet = 'capital';   // anciens onglets (accueil, budget, ou…) → le premier
 
   var nf = function (d) { return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d }); };
   function n(v, d) { return v == null || !isFinite(v) ? '—' : nf(d == null ? 2 : d).format(v); }
@@ -165,107 +216,260 @@
     return 'le ' + date(iso);
   }
 
-  /* ── Accueil (façon Finary) ── */
+  /* Cinq onglets (04/11/2026, Tom : « un grand truc, vraiment, avec des graphiques, des trucs visuels ») :
+     Capital (le grand chiffre et ses graphiques), Situation (ce qui coince, ce qui va), À faire (le mois
+     dans l'ordre du guide v12), Dépenses (dépensé / prévu, prélèvements de la paie) et Stats. Tout est
+     calculé par le moteur (chiffres.json) ; ici, on ne fait que dessiner. */
+  var COURTS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+  var JOURS = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
+  var NIV = { ko: '#ff6b6b', surveiller: '#f5b83d', ok: '#3ecf8e', neutre: '#8d929c' };
+  var POCHES = [['trading', 'Trading', '#40c8e0'], ['crypto', 'Crypto', '#f6a623'], ['pea', 'PEA', '#2bb3a3'], ['livret', 'Livret A', '#8e6bdb']];
+  function dIso(iso) { var p = String(iso).slice(0, 10).split('-').map(Number); return new Date(p[0], p[1] - 1, p[2] || 1); }
+  function jour(iso) { if (!iso) return '—'; var d = dIso(iso); return JOURS[d.getDay()] + ' ' + d.getDate() + ' ' + COURTS[d.getMonth()]; }
+  function joursAvant(iso) { var a = new Date(); a.setHours(0, 0, 0, 0); return Math.round((dIso(iso) - a) / 864e5); }
+  function dans(iso) { var k = joursAvant(iso); return k < 0 ? 'passé' : k === 0 ? 'aujourd’hui' : k === 1 ? 'demain' : 'dans ' + k + ' jours'; }
+  function moisNom(iso) { return iso ? MOIS[+iso.split('-')[1] - 1] : '—'; }
+  function deMois(iso) { var m = moisNom(iso); return (/^[aeiouyéèh]/i.test(m) ? 'd’' : 'de ') + m; }   // d’octobre, de novembre
+  function court(iso) { return COURTS[+String(iso).split('-')[1] - 1]; }
+  function ke(v) { return v == null || !isFinite(v) ? '—' : Math.abs(v) >= 1000 ? n(v / 1000, 1).replace(',0', '') + ' k€' : n(v, 0) + ' €'; }
+  function pli(titre, valeur, sous, corps, ouvert) {
+    return '<details class="pli"' + (ouvert ? ' open' : '') + '><summary><span class="pli-t">' + titre + (sous ? '<em>' + sous + '</em>' : '') + '</span><b>' + valeur + '</b></summary><div class="pli-c">' + corps + '</div></details>';
+  }
+
+  /* ── Petits graphiques en SVG (rien à charger) ── */
+  var GW = 340;
+  // courbe d'une série mensuelle, avec une bande (couloir) facultative et des mois à venir
+  function courbe(points, o) {
+    o = o || {};
+    var H = o.h || 160, pT = 16, pB = 22, pL = 6, pR = 40;
+    var labels = points.map(function (p) { return p.iso; });
+    (o.bande || []).forEach(function (b) { if (labels.indexOf(b.iso) < 0) labels.push(b.iso); });
+    labels.sort();
+    var vals = points.map(function (p) { return p.y; });
+    (o.bande || []).forEach(function (b) { vals.push(b.basse, b.haute); });
+    var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+    if (o.zero) mn = Math.min(0, mn);
+    if (mx === mn) mx = mn + 1;
+    var marge = (mx - mn) * 0.08; mx += marge; if (!o.zero) mn -= marge; if (o.zero && mn > 0) mn = 0;
+    var X = function (i) { return pL + (GW - pL - pR) * (labels.length > 1 ? i / (labels.length - 1) : 0.5); };
+    var Y = function (v) { return pT + (H - pT - pB) * (1 - (v - mn) / (mx - mn)); };
+    var ix = function (iso) { return labels.indexOf(iso); };
+    var s = '<svg class="graph" viewBox="0 0 ' + GW + ' ' + H + '">';
+    for (var k = 0; k <= 2; k++) { var v = mn + (mx - mn) * (1 - k / 2), gy = Y(v); s += '<line x1="' + pL + '" x2="' + (GW - pR + 4) + '" y1="' + gy.toFixed(1) + '" y2="' + gy.toFixed(1) + '" class="g-ligne"/><text x="' + (GW - 2) + '" y="' + (gy + 3.5).toFixed(1) + '" text-anchor="end">' + ke(v) + '</text>'; }
+    if (o.bande && o.bande.length) {
+      var b = o.bande.filter(function (x) { return ix(x.iso) >= 0; });
+      s += '<path class="g-bande" d="M' + b.map(function (x) { return X(ix(x.iso)).toFixed(1) + ' ' + Y(x.haute).toFixed(1); }).join(' L') + ' L' + b.slice().reverse().map(function (x) { return X(ix(x.iso)).toFixed(1) + ' ' + Y(x.basse).toFixed(1); }).join(' L') + ' Z"/>';
+    }
+    var pts = points.map(function (p) { return [X(ix(p.iso)), Y(p.y)]; });
+    if (pts.length) {
+      var ligneD = 'M' + pts.map(function (p) { return p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' L');
+      s += '<path d="' + ligneD + ' L' + pts[pts.length - 1][0].toFixed(1) + ' ' + (H - pB) + ' L' + pts[0][0].toFixed(1) + ' ' + (H - pB) + ' Z" fill="' + o.couleur + '" fill-opacity=".16"/>'
+        + '<path d="' + ligneD + '" fill="none" stroke="' + o.couleur + '" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>'
+        + '<circle cx="' + pts[pts.length - 1][0].toFixed(1) + '" cy="' + pts[pts.length - 1][1].toFixed(1) + '" r="4" fill="' + o.couleur + '" stroke="#15161a" stroke-width="2"/>';
+    }
+    var pas = Math.max(1, Math.ceil(labels.length / 6));
+    labels.forEach(function (iso, i) { if ((i % pas === 0 && labels.length - 1 - i >= pas * 0.6) || i === labels.length - 1) s += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle"' + (points.some(function (p) { return p.iso === iso; }) ? '' : ' class="g-futur"') + '>' + court(iso) + '</text>'; });
+    return s + '</svg>';
+  }
+  // anneau : la part d'un tout (donut à plusieurs parts, ou une jauge)
+  function anneau(parts, centre, sous, taille) {
+    var t = taille || 140, r = t / 2 - 12, c = 2 * Math.PI * r, tot = 0, off = 0;
+    parts.forEach(function (p) { tot += Math.max(0, p.v); });
+    var total = parts.length === 1 ? Math.max(tot, parts[0].sur || tot) : tot || 1;
+    var s = '<svg class="anneau" viewBox="0 0 ' + t + ' ' + t + '" width="' + t + '" height="' + t + '"><circle cx="' + t / 2 + '" cy="' + t / 2 + '" r="' + r + '" fill="none" stroke="#23252a" stroke-width="13"/>';
+    parts.forEach(function (p) {
+      var l = Math.max(0, p.v) / total * c; if (l <= 0) return;
+      var trait = parts.length > 1 ? Math.max(0.5, l - 2.5) : Math.max(0.5, l);
+      s += '<circle cx="' + t / 2 + '" cy="' + t / 2 + '" r="' + r + '" fill="none" stroke="' + p.c + '" stroke-width="13" stroke-linecap="' + (parts.length > 1 ? 'butt' : 'round') + '" stroke-dasharray="' + trait.toFixed(1) + ' ' + (c - trait).toFixed(1) + '" stroke-dashoffset="' + (-off).toFixed(1) + '" transform="rotate(-90 ' + t / 2 + ' ' + t / 2 + ')"/>';
+      off += l;
+    });
+    return s + '<text x="50%" y="' + (t / 2 + (sous ? 0 : 6)) + '" text-anchor="middle" class="a-v">' + centre + '</text>' + (sous ? '<text x="50%" y="' + (t / 2 + 17) + '" text-anchor="middle" class="a-s">' + sous + '</text>' : '') + '</svg>';
+  }
+  // barre « dépensé sur prévu » : le trait blanc marque le prévu, le rouge déborde
+  function jauge(valeur, sur, couleur) {
+    var max = Math.max(valeur, sur, 0.01), p = Math.max(0, valeur) / max * 100, m = sur / max * 100;
+    return '<div class="jauge"><i style="width:' + p.toFixed(1) + '%;background:' + couleur + '"></i>' + (valeur > sur && sur > 0 ? '<u style="left:' + m.toFixed(1) + '%"></u>' : '') + '</div>';
+  }
+  function barresV(vals, etiquettes, couleur, ligne) {
+    var max = Math.max.apply(null, [1, ligne || 0].concat(vals.map(function (v) { return Math.abs(v || 0); })));
+    return '<div class="mb">' + vals.map(function (v, i) { return '<div><i style="height:' + Math.max(3, Math.abs(v || 0) / max * 100).toFixed(0) + '%;background:' + (typeof couleur === 'function' ? couleur(v, i) : couleur) + '"></i><span>' + esc(etiquettes[i] || '') + '</span></div>'; }).join('') + '</div>';
+  }
+
+  /* ── 1. Capital ── */
   var vue = stock.lire('cc-vue') || 'net';
-  function accueil() {
-    var C = J.capital || {}, A = C.auCours || {}, Ob = J.objectif || {}, B = J.banque || {}, cou = g(J, 'bilan.couloir') || {};
+  function capital() {
+    var C = J.capital || {}, A = C.auCours || {}, Ob = J.objectif || {}, B = J.banque || {}, Hc = g(J, 'historique.capital') || [], Hp = g(J, 'historique.patrimoine') || [];
+    var cou = J.couloir || {}, Bc = g(J, 'bilan.couloir') || {}, L = J.livret || {}, Mt = L.matelas || {};
     var p100 = A.total ? A.total / (Ob.montant || 100000) * 100 : 0;
-    var h = '';
-    // le même grand chiffre que l'Accueil du PC (Net, Brut, Financier) : le relevé du mois, puis l'estimation du jour
-    var Ac = J.accueil;
-    if (Ac) {
-      var rel = Ac.releve[vue], pre = Ac.precedent[vue], est = Ac.estime[vue], varM = rel != null && pre != null ? rel - pre : null;
-      var NOMS_VUE = { net: 'Patrimoine net', brut: 'Patrimoine brut', financier: 'Patrimoine financier' };
+    var du10 = g(C, 'du10.total'), prec = Hc.length > 1 ? Hc[Hc.length - 2] : null;
+    var h = '<section class="carte heros-cap"><span>Capital investi · aujourd’hui</span><div class="gros">' + eur(A.total, 0) + '</div>'
+      + '<div class="sous">' + (prec ? '<span class="' + cls(du10 - prec.total) + '" style="font-weight:650">' + eurS(du10 - prec.total, 0) + '</span> sur le dernier mois · ' : '') + 'figé au 10 : <b>' + eur(du10, 0) + '</b></div>';
+    // capital du 10 mois par mois, et le couloir du plan pour les 3 mois qui viennent
+    var dernierIso = Hc.length ? Hc[Hc.length - 1].iso : null;
+    var bande = (cou.mois || []).filter(function (m) { return Hc.some(function (x) { return x.iso === m.iso; }) || (dernierIso && m.iso > dernierIso && m.iso <= addMois(dernierIso, 3)); });
+    if (Hc.length > 1) h += courbe(Hc.map(function (x) { return { iso: x.iso, y: x.total }; }), { couleur: '#3ecf8e', bande: bande, h: 170, zero: true })
+      + '<div class="legende"><span><i style="background:#3ecf8e"></i>capital du 10</span><span><i class="l-bande"></i>couloir du plan</span></div>';
+    h += '</section>';
+    // trois chiffres
+    var argent = (B.total || 0) + (L.solde || 0);
+    var Ac = J.accueil || {}, net = g(Ac, 'releve.net'), netPre = g(Ac, 'precedent.net');
+    h += '<div class="grille3"><section class="carte kpi"><span>Patrimoine net</span><b>' + ke(net) + '</b><span class="' + cls(net - netPre) + '">' + eurS(net - netPre, 0) + '</span></section>'
+      + '<section class="carte kpi"><span>Argent dispo</span><b>' + ke(argent) + '</b><span>banque + livret</span></section>'
+      + '<section class="carte kpi"><span>Investi / mois</span><b>' + ke(Ob.investiParMois3Mois) + '</b><span>sur 3 mois</span></section></div>';
+    // objectif et matelas en anneaux
+    h += '<section class="carte"><h2>Objectifs</h2><div class="duo"><div>' + anneau([{ v: p100, sur: 100, c: '#3ecf8e' }], n(p100, 1) + ' %', 'de 100 k€', 128) + '<small>100 000 € le ' + date(Ob.date) + '</small></div>'
+      + '<div>' + anneau([{ v: Mt.pct || 0, sur: 100, c: '#8e6bdb' }], n(Mt.pct, 0) + ' %', 'matelas', 128) + '<small>' + eur(Mt.solde, 0) + ' sur ' + eur(Mt.cible, 0) + '</small></div></div></section>';
+    // répartition
+    var parts = POCHES.map(function (p) { return { v: A[p[0]] || 0, c: p[2], nom: p[1] }; });
+    h += '<section class="carte"><h2>Répartition</h2><div class="duo">' + anneau(parts, ke(A.total), '4 poches', 150)
+      + '<div class="leg-v">' + parts.map(function (p) { return '<div><i style="background:' + p.c + '"></i><span>' + p.nom + '</span><b>' + eur(p.v, 0) + '</b><em>' + n(A.total ? p.v / A.total * 100 : 0, 0) + ' %</em></div>'; }).join('') + '</div></div></section>';
+    // patrimoine : le grand chiffre du PC (Net / Brut / Financier) et sa courbe
+    if (J.accueil) {
+      var rel = Ac.releve[vue], pre = Ac.precedent[vue], est = Ac.estime[vue];
       h += '<section class="carte"><div class="seg">' + ['net', 'brut', 'financier'].map(function (k) { return '<button data-vue="' + k + '" class="' + (vue === k ? 'on' : '') + '">' + { net: 'Net', brut: 'Brut', financier: 'Financier' }[k] + '</button>'; }).join('') + '</div>'
-        + '<h2 style="margin-top:12px">' + NOMS_VUE[vue] + '</h2><div class="gros">' + eur(rel, 0) + '</div>'
-        + (varM != null ? '<div class="sous"><span class="' + cls(varM) + '" style="font-weight:650">' + eurS(varM, 0) + '</span> sur 1 mois · ' + (vue === 'financier' ? 'capital du 10 ' + esc(mois(Ac.releve.moisFinancier)) : 'relevé de ' + esc(mois(Ac.releve.mois))) + '</div>' : '')
-        + '<div class="sous">Estimé aujourd’hui <b>' + eur(est, 0) + '</b> <span class="' + cls(est - rel) + '">' + eurS(est - rel, 0) + '</span></div></section>';
+        + '<h2 style="margin-top:12px">Patrimoine ' + vue + '</h2><div class="gros" style="font-size:32px">' + eur(rel, 0) + '</div>'
+        + '<div class="sous"><span class="' + cls(rel - pre) + '" style="font-weight:650">' + eurS(rel - pre, 0) + '</span> sur 1 mois · estimé aujourd’hui <b>' + eur(est, 0) + '</b></div>';
+      var serie = vue === 'financier' ? Hc.map(function (x) { return { iso: x.iso, y: x.total }; }) : Hp.map(function (x) { return { iso: x.iso, y: vue === 'net' ? x.net : x.brut }; });
+      if (serie.length > 1) h += courbe(serie, { couleur: '#7cc4ff', h: 140, zero: vue !== 'net' || serie.every(function (x) { return x.y >= 0; }) });
+      h += '</section>';
     }
-    h += '<section class="carte"><h2>Capital investi</h2><div class="gros">' + eur(A.total, 0) + '</div>'
-      + '<div class="sous">Figé au 10 (' + esc(mois(g(C, 'du10.mois'))) + ') : <b>' + eur(g(C, 'du10.total'), 0) + '</b> · banque à part</div>'
-      + barre(p100, 'linear-gradient(90deg,#3ecf8e,#2bb3a3)') + '<div class="sous"><b>' + n(p100, 1) + ' %</b> de ' + eur(Ob.montant || 100000, 0) + ' · objectif le ' + date(Ob.date) + '</div></section>';
-    var Mt = g(J, 'livret.matelas') || {};
-    h += '<div class="grille2"><section class="carte kpi"><span>Matelas (Livret A)</span><b>' + n(Mt.pct, 0) + ' %</b><span>' + eur(Mt.solde, 0) + ' / ' + eur(Mt.cible, 0) + '</span></section>'
-      + '<section class="carte kpi"><span>Investi / mois (3 mois)</span><b>' + eur(Ob.investiParMois3Mois, 0) + '</b></section></div><div style="height:12px"></div>';
-    h += '<section class="carte"><h2>Répartition</h2>' + ligne('Trading', eur(A.trading)) + ligne('Crypto', eur(A.crypto)) + ligne('PEA', eur(A.pea)) + ligne('Livret A', eur(A.livret)) + '</section>';
-    h += '<section class="carte"><h2>Banque · ' + eur(B.total) + '</h2>' + (B.comptes || []).map(function (c) { return ligne(esc(c.nom), '<span class="' + (c.solde < 0 ? 'neg' : '') + '">' + eur(c.solde) + '</span>'); }).join('') + '</section>';
-    if (cou.horizons) {
-      var pos = String(cou.positionTexte || '—').split(' · ');   // « au départ du couloir · novembre 2026 jugé après le 10 »
-      h += '<section class="carte"><h2>Couloir 2032</h2>' + ligne('Position', esc(pos[0]), pos[1] ? esc(pos[1]) : '')
-        + cou.horizons.map(function (x) { return ligne(esc(x.horizon) + ' · ' + esc(mois(x.iso)), eur(x.basse, 0) + ' – ' + eur(x.haute, 0)); }).join('')
-        + (cou.jalonAnnee ? ligne('Fin ' + cou.jalonAnnee.annee, esc(cou.jalonAnnee.statut), eur(cou.jalonAnnee.basse, 0) + ' – ' + eur(cou.jalonAnnee.haute, 0)) : '') + '</section>';
+    // couloir 2032 : où il est dans la bande, et les prochains caps
+    if (Bc.horizons) {
+      var pos = Bc.position == null ? null : Math.max(0, Math.min(100, Bc.position));
+      h += '<section class="carte"><h2>Couloir 2032</h2><div class="couloir"><i style="left:' + (pos == null ? 0 : pos) + '%"></i></div><div class="couloir-l"><span>borne basse</span><span>borne haute</span></div>'
+        + '<div class="sous"><b>' + esc(String(Bc.positionTexte || '—').split(' · ')[0]) + '</b>' + (Bc.jalonAnnee ? ' · fin ' + Bc.jalonAnnee.annee + ' : ' + esc(Bc.jalonAnnee.statut) : '') + '</div>'
+        + Bc.horizons.map(function (x) { return ligne(esc(x.horizon) + ' · ' + esc(mois(x.iso)), eur(x.basse, 0) + ' – ' + eur(x.haute, 0)); }).join('') + '</section>';
     }
-    var al = J.alertes || [];
-    h += '<section class="carte"><h2>Alertes</h2>' + (al.length ? al.map(function (a) { return '<div class="alerte"><i></i><div>' + esc(a) + '</div></div>'; }).join('') : '<div class="dim">Rien à signaler.</div>') + '</section>';
-    return h;
-  }
-
-  /* ── Budget (façon Actual) ── */
-  function budget() {
-    var B = J.budget, A = J.abonnements || [];
-    if (!B) return '<div class="vide">Le Budget n’a pas encore publié son cycle.</div>';
-    var env = B.enveloppes || [], vars = env.filter(function (e) { return e.groupe !== 'fixes'; }), fixes = env.filter(function (e) { return e.groupe === 'fixes'; });
-    var bloc = function (e) {
-      // une charge fixe payée en entier, c'est normal (violet) ; une dépense presque au bout : orange
-      var p = e.prevu > 0 ? e.depense / e.prevu * 100 : (e.depense > 0 ? 100 : 0), c = e.reste < 0 ? '#ff6b6b' : (p > 85 && e.groupe !== 'fixes') ? '#f5b83d' : '#a775f0';
-      return '<div class="env"><div class="env-h"><b>' + esc(e.nom) + '</b><strong class="' + (e.reste < 0 ? 'neg' : 'pos') + '">' + eur(e.reste) + '</strong></div>' + barre(p, c)
-        + '<small>' + eur(e.depense) + ' dépensés sur ' + eur(e.prevu) + (e.reste < 0 ? ' · dépassé' : ' · reste') + '</small></div>';
-    };
-    var parAn = A.reduce(function (s, a) { return s + (a.parAn || 0); }, 0);
-    return '<section class="carte"><h2>' + esc(B.cycle || 'Cycle en cours') + '</h2><div class="sous" style="margin-top:0">Rentrées du cycle : <b>' + eur(B.rentrees) + '</b></div></section>'
-      + '<section class="carte"><h2>Dépenses du cycle</h2>' + (vars.length ? vars.map(bloc).join('') : '<div class="dim">Aucune enveloppe.</div>') + '</section>'
-      + (fixes.length ? '<section class="carte"><h2>Charges fixes</h2>' + fixes.map(bloc).join('') + '</section>' : '')
-      + '<section class="carte"><h2>Abonnements · ' + eur(parAn, 0) + ' / an</h2>' + (A.length ? A.map(function (a) {
-        return ligne(esc(a.nom) + '<em>' + esc(a.rythme) + ' · prochain le ' + date(a.prochaine) + '</em>' + (a.alertes || []).map(function (x) { return '<span class="pill o">' + esc(x) + '</span>'; }).join(''), eur(a.montant), eur(a.parAn, 0) + ' / an');
-      }).join('') : '<div class="dim">Aucun abonnement repéré.</div>') + '</section>';
-  }
-
-  /* ── Crypto (façon CoinGecko) ── */
-  function crypto() {
-    var C = J.crypto || {}, b = C.btc || {}, l = C.link || {}, R = g(J, 'bilan.link.regles') || {};
+    // mes poches, à déplier
+    var Cr = J.crypto || {}, b = Cr.btc || {}, l = Cr.link || {}, P = J.pea || {}, T = J.trading || {}, TC = g(J, 'bilan.tradingComptes') || [];
     var coin = function (sym, nom, couleur, x, pruE, coursTxt) {
-      return '<section class="carte"><div class="coin"><span class="rond" style="background:' + couleur + '">' + sym.charAt(0) + '</span><div><h3>' + nom + '<small>' + sym + '</small></h3><div class="dim" style="font-size:13px">' + coursTxt + '</div></div>'
+      return '<div class="coin" style="margin-top:6px"><span class="rond" style="background:' + couleur + '">' + sym.charAt(0) + '</span><div><h3>' + nom + '<small>' + sym + '</small></h3><div class="dim" style="font-size:13px">' + coursTxt + '</div></div>'
         + '<div class="v"><b>' + eur(x.valeur) + '</b><span class="' + cls(x.pv) + '" style="font-weight:650;font-size:13px">' + eurS(x.pv) + (x.investi ? ' · ' + pct(x.pv / x.investi * 100) : '') + '</span></div></div>'
         + '<div class="pru"><div><span>Prix de revient</span><b>' + usd(x.pruUsd) + '</b></div><div><span>en euros</span><b>' + eur(pruE, pruE < 100 ? 2 : 0) + '</b></div></div>'
-        + '<div class="note">' + n(x.qte, sym === 'BTC' ? 6 : 4) + ' ' + sym + ' · ' + eur(x.investi) + ' investis</div></section>';
+        + '<div class="note">' + n(x.qte, sym === 'BTC' ? 6 : 4) + ' ' + sym + ' · ' + eur(x.investi) + ' investis</div>';
     };
-    return '<section class="carte"><h2>Portefeuille</h2><div class="gros">' + eur(C.valeur) + '</div><div class="sous">BTC + LINK · cours du ' + date(C.coursLe) + '</div></section>'
-      + coin('BTC', 'Bitcoin', '#f7931a', b, b.pru, eur(b.cours, 0))
-      + coin('LINK', 'Chainlink', '#2a5ada', l, l.pruEur, usd(l.coursUsd) + ' · ' + eur(l.cours))
-      + '<section class="carte"><h2>Règles du LINK (en dollars)</h2>' + ligne('Stop fixe', usd(R.stop, 1), 'à confirmer') + ligne('Achat (1×/mois)', 'sous ' + usd(R.achatSous, 0), 'pas avant janvier') + ligne('Stop au prix de revient', 'à ' + usd(R.stopAuPru, 0))
-      + (R.ventes || []).map(function (v) { return ligne('Palier', esc(v)); }).join('') + (g(J, 'bilan.link.signal') ? '<div class="alerte"><i></i><div>' + esc(g(J, 'bilan.link.signal')) + '</div></div>' : '') + '</section>'
-      + '<p class="note">' + esc(C.pruUsdNote || '') + '</p>';
+    var pvC = (b.pv || 0) + (l.pv || 0), dT = (T.mois || []).slice(-1)[0];
+    h += '<section class="carte"><h2>Mes poches</h2>'
+      + pli('<i class="pt" style="background:#f6a623"></i>Crypto', eur(Cr.valeur), '<span class="' + cls(pvC) + '">' + eurS(pvC, 0) + '</span> · cours du ' + date(Cr.coursLe),
+        coin('BTC', 'Bitcoin', '#f7931a', b, b.pru, eur(b.cours, 0)) + coin('LINK', 'Chainlink', '#2a5ada', l, l.pruEur, usd(l.coursUsd) + ' · ' + eur(l.cours)) + (Cr.pruUsdNote ? '<p class="note">' + esc(Cr.pruUsdNote) + '</p>' : ''))
+      + pli('<i class="pt" style="background:#2bb3a3"></i>PEA Fortuneo', eur(P.valeur), '<span class="' + cls(P.valeur - P.verse) + '">' + eurS(P.valeur - P.verse, 0) + '</span> sur ' + eur(P.verse, 0) + ' versés',
+        ligne('Titres', eur(P.titres), 'cours du ' + date(P.coursDu)) + ligne('Espèces', eur(P.especes)) + ligne('Versé', eur(P.verse)))
+      + pli('<i class="pt" style="background:#8e6bdb"></i>Livret A', eur(L.solde), 'matelas ' + n(Mt.pct, 0) + ' % · taux ' + n((L.taux || 0) * 100, 1) + ' %',
+        barre(Mt.pct, '#8e6bdb') + '<div class="sous"><b>' + n(Mt.pct, 0) + ' %</b> du matelas de ' + eur(Mt.cible, 0) + ' · il manque ' + eur(Mt.reste, 0) + '</div>')
+      + pli('<i class="pt" style="background:#40c8e0"></i>Trading', eur(T.capital), dT ? moisNom(dT.iso) + ' <span class="' + cls(dT.pnl) + '">' + eurS(dT.pnl) + '</span>' : '',
+        TC.map(function (c) { return ligne(esc(c.nom) + (c.note ? '<em>' + esc(c.note.toLowerCase()) + '</em>' : ''), eur(c.solde), '<span class="' + cls(c.varPct) + '">' + pct(c.varPct, 2) + '</span> ce mois'); }).join('')
+        + (T.mois || []).map(function (m) { return ligne(esc(mois(m.iso)), '<span class="' + cls(m.pnl) + '">' + eurS(m.pnl) + '</span>'); }).join(''))
+      + pli('<i class="pt" style="background:#8d929c"></i>Banque', eur(B.total), (B.comptes || []).length + ' comptes',
+        (B.comptes || []).map(function (c) { return ligne(esc(c.nom), '<span class="' + (c.solde < 0 ? 'neg' : '') + '">' + eur(c.solde) + '</span>'); }).join(''))
+      + '</section>';
+    var F = J.frais;
+    if (F) h += '<section class="carte">' + pli('Frais ' + F.an, eur(F.total), F.pctCrypto != null ? 'crypto : ' + n(F.pctCrypto, 2) + ' % des achats' : '',
+      F.lignes.map(function (x) { return ligne(esc(x.poste) + '<em>' + esc(x.detail) + '</em>', eur(x.montant) + (x.estime ? '<em>estimé</em>' : '')); }).join('') + (F.note ? '<p class="note">' + esc(F.note) + '</p>' : '')) + '</section>';
+    return h;
+  }
+  function addMois(iso, k) { var p = iso.split('-').map(Number), d = new Date(p[0], p[1] - 1 + k, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+
+  /* ── 2. Situation : ce qui coince, ce qui va ── */
+  function situation() {
+    var S = J.situation || [];
+    if (!S.length) return '<div class="vide">Ouvre le Command Center sur le PC une fois pour publier cette page.</div>';
+    var nb = { ko: 0, surveiller: 0, ok: 0, neutre: 0 };
+    S.forEach(function (s) { nb[s.niveau] = (nb[s.niveau] || 0) + 1; });
+    var h = '<section class="carte"><div class="duo">' + anneau([{ v: nb.ko, c: NIV.ko }, { v: nb.surveiller, c: NIV.surveiller }, { v: nb.neutre, c: NIV.neutre }, { v: nb.ok, c: NIV.ok }], String(S.length), 'points', 140)
+      + '<div class="leg-v">' + [['ko', 'Ne va pas'], ['surveiller', 'À surveiller'], ['neutre', 'En cours'], ['ok', 'Va bien']].map(function (x) { return '<div><i style="background:' + NIV[x[0]] + '"></i><span>' + x[1] + '</span><b>' + nb[x[0]] + '</b></div>'; }).join('') + '</div></div></section>';
+    var item = function (s) {
+      return '<button class="sit" data-o="' + esc(s.onglet || '') + '" style="--c:' + NIV[s.niveau] + '"><div class="sit-h"><span><i></i>' + esc(s.sujet) + '</span><b>' + esc(s.valeur) + '</b></div>'
+        + (s.jauge != null ? '<div class="barre"><i style="width:' + s.jauge + '%;background:' + NIV[s.niveau] + '"></i></div>' : '') + (s.detail ? '<small>' + esc(s.detail) + '</small>' : '') + '</button>';
+    };
+    var coince = S.filter(function (s) { return s.niveau === 'ko' || s.niveau === 'surveiller'; }).sort(function (a, b) { return (a.niveau === 'ko' ? 0 : 1) - (b.niveau === 'ko' ? 0 : 1); });
+    var va = S.filter(function (s) { return s.niveau === 'ok' || s.niveau === 'neutre'; }).sort(function (a, b) { return (a.niveau === 'ok' ? 0 : 1) - (b.niveau === 'ok' ? 0 : 1); });
+    if (coince.length) h += '<section class="carte"><h2 style="color:' + NIV.ko + '">Ce qui coince</h2>' + coince.map(item).join('') + '</section>';
+    if (va.length) h += '<section class="carte"><h2 style="color:' + NIV.ok + '">Ce qui va</h2>' + va.map(item).join('') + '</section>';
+    return h + '<p class="note" style="text-align:center">Touche un point pour aller voir le détail.</p>';
   }
 
-  /* ── Placements ── */
-  function placements() {
-    var P = J.pea || {}, L = J.livret || {}, M = L.matelas || {}, T = J.trading || {}, TC = g(J, 'bilan.tradingComptes') || [], F = J.frais;
-    var h = '<section class="carte"><h2>PEA · Fortuneo</h2><div class="gros" style="font-size:32px">' + eur(P.valeur) + '</div><div class="sous">Versé <b>' + eur(P.verse) + '</b> · <span class="' + cls(P.valeur - P.verse) + '">' + eurS(P.valeur - P.verse) + '</span></div>'
-      + ligne('Titres', eur(P.titres), 'cours du ' + date(P.coursDu)) + ligne('Espèces', eur(P.especes)) + '</section>';
-    h += '<section class="carte"><h2>Livret A · matelas</h2><div class="gros" style="font-size:32px">' + eur(L.solde) + '</div>' + barre(M.pct, '#8e6bdb')
-      + '<div class="sous"><b>' + n(M.pct, 0) + ' %</b> du matelas de ' + eur(M.cible, 0) + ' · il manque ' + eur(M.reste, 0) + ' · taux ' + n((L.taux || 0) * 100, 1) + ' %</div></section>';
-    h += '<section class="carte"><h2>Trading · ' + eur(T.capital) + '</h2>' + TC.map(function (c) { return ligne(esc(c.nom) + (c.note ? '<em>' + esc(c.note.toLowerCase()) + '</em>' : ''), eur(c.solde), '<span class="' + cls(c.varPct) + '">' + pct(c.varPct, 2) + '</span> ce mois'); }).join('')
-      + (T.mois || []).map(function (m) { return ligne(esc(mois(m.iso)), '<span class="' + cls(m.pnl) + '">' + eurS(m.pnl) + '</span>'); }).join('') + '</section>';
-    if (F) h += '<section class="carte"><h2>Frais ' + F.an + ' · ' + eur(F.total) + '</h2>' + F.lignes.map(function (x) { return ligne(esc(x.poste) + '<em>' + esc(x.detail) + '</em>', eur(x.montant) + (x.estime ? '<em>estimé</em>' : '')); }).join('')
-      + (F.pctCrypto != null ? '<p class="note">Crypto : ' + n(F.pctCrypto, 2) + ' % de tes achats en frais. ' + esc(F.note) + '</p>' : '') + '</section>';
+  /* ── 3. À faire : le mois dans l'ordre ── */
+  function aFaireCompte() {
+    var X = J && J.aFaire; if (!X || !X.etapes) return 0;
+    return X.etapes.filter(function (e) { return e.etat === 'a-faire' && (!X.sections[e.section] || joursAvant(X.sections[e.section]) <= 0); }).length;
+  }
+  function afaire() {
+    var X = J.aFaire, Bi = J.bilan || {};
+    if (!X || !X.etapes) return '<div class="vide">Ouvre le Command Center sur le PC une fois pour publier cette page.</div>';
+    var NOMS = { btc: 'Bitcoin', link: 'Chainlink', pea: 'PEA', livret: 'Livret A' }, COUL = { btc: '#f6a623', link: '#3a7bd5', pea: '#2bb3a3', livret: '#8e6bdb' };
+    var premier = X.etapes.filter(function (e) { return e.etat === 'a-faire'; })[0];
+    var h = '';
+    // le plan du mois : combien investir, où il en est
+    var PM = X.planMois;
+    if (PM) h += '<section class="carte"><h2>À investir en ' + esc(moisNom(PM.mois)) + '</h2><div class="duo">' + anneau([{ v: PM.verse, sur: PM.cible, c: '#3ecf8e' }], ke(PM.verse), 'sur ' + ke(PM.cible), 128)
+      + '<div class="leg-v">' + PM.lignes.map(function (x) { return '<div class="lv-b"><span><i style="background:' + COUL[x.poche] + '"></i>' + NOMS[x.poche] + (x.mois ? ' ' + esc(deMois(x.mois)) : '') + '</span><b>' + n(x.verse, 0) + ' / ' + n(x.cible, 0) + ' €</b>' + jauge(x.verse, x.cible, COUL[x.poche]) + '</div>'; }).join('') + '</div></div></section>';
+    // chaque dimanche : le bitcoin
+    if (X.btc) {
+      var dims = [];
+      for (var i = 0; i < X.btc.dimanches; i++) dims.push('<i class="' + (i < X.btc.achats ? 'on' : '') + '"></i>');
+      h += '<section class="carte"><h2>Chaque dimanche · bitcoin ' + eur(X.btc.montant, 0) + '</h2><div class="dims">' + dims.join('') + '</div>'
+        + '<div class="sous"><b>' + X.btc.achats + ' sur ' + X.btc.dimanches + '</b> ce mois · prochain <b>' + jour(X.btc.prochain) + '</b> (' + dans(X.btc.prochain) + ')</div></section>';
+    }
+    var TITRES = { paie: 'Après la paie', le10: 'Le 10', fin: 'Fin du mois' };
+    ['paie', 'le10', 'fin'].forEach(function (sec) {
+      var es = X.etapes.filter(function (e) { return e.section === sec; }); if (!es.length) return;
+      var d = X.sections[sec];
+      h += '<section class="carte"><h2>' + TITRES[sec] + (d ? '<em>' + (sec === 'paie' ? 'vers le ' : '') + jour(d) + '</em>' : '') + '</h2>' + es.map(function (e) {
+        var maint = e === premier, futur = d && joursAvant(d) > 0;
+        var c = e.etat === 'fait' || e.etat === 'auto-fait' ? 'fait' : e.etat === 'auto' ? 'auto' : e.etat === 'rappel' ? 'rappel' : maint ? 'maint' : '';
+        var titre = e.quoi === 'Livret A' && e.mois ? 'Livret A ' + deMois(e.mois) : e.quoi;
+        var val = e.montant != null ? eur(e.montant) : '';
+        var etiq = e.etat === 'auto' ? '<span class="et bleu">tout seul</span>' : e.etat === 'auto-fait' ? '<span class="et vert">fait tout seul</span>' : e.etat === 'rappel' ? '<span class="et">rappel</span>'
+          : maint ? '<span class="et or">' + (e.quoi === 'Attendre la paie' ? 'en cours' : futur ? 'prochaine' : 'maintenant') + '</span>' : '';
+        var sous = e.detail || '';
+        if (e.quoi === 'Attendre la paie' && e.etat === 'fait') sous = 'arrivée le ' + jour(e.date) + (e.montant ? ' · ' + eur(e.montant) : '');
+        if (e.verse > 0 && e.etat !== 'fait') sous = eur(e.verse) + ' versés' + (sous ? ' · ' + sous : '');
+        var rel = e.releves ? '<div class="puces">' + e.releves.map(function (r) { return '<span class="' + (r.fait ? 'ok' : '') + '">' + (r.fait ? '✓ ' : '') + esc(r.nom) + '</span>'; }).join('') + '</div>' : '';
+        return '<div class="tache ' + c + '"><i>' + (c === 'fait' ? '✓' : c === 'auto' ? '⟳' : '') + '</i><div><b>' + esc(titre) + ' ' + etiq + '</b>' + (sous ? '<small>' + esc(sous) + '</small>' : '') + rel + '</div><strong>' + val + '</strong></div>';
+      }).join('') + '</section>';
+    });
+    if ((Bi.aConfirmer || []).length) h += '<section class="carte">' + pli('À confirmer par toi', String(Bi.aConfirmer.length), 'décisions du plan en attente', Bi.aConfirmer.map(function (x) { return '<div class="alerte"><i style="background:#8fb3ff"></i><div>' + esc(x) + '</div></div>'; }).join('')) + '</section>';
     return h;
   }
 
-  /* ── Plan (façon M1 Finance) ── */
-  function plan() {
-    var Bi = J.bilan || {}, Au = Bi.audit || {}, LV = Bi.livretAVerser || {}, MS = Bi.cibleMoisSuivant || {}, P = J.plan || {};
-    var NOMS = { btc: 'Bitcoin', link: 'Chainlink', pea: 'PEA', livret: 'Livret A' };
-    var h = '<div class="gros-plan"><span>Livret A de ' + esc(mois(LV.mois)) + ' à verser après la paie</span><b>' + eur(LV.montant) + '</b><small>+ ' + esc(LV.plus || '') + '</small></div>';
-    h += '<section class="carte"><h2>' + esc(mois(Bi.mois)) + ' · ' + esc(Bi.planEnVigueur || '') + ' · en cours</h2>' + (Au.lignes || []).map(function (x) {
-      // mois en cours : versé jusqu'ici et cible, sans écart ni score (la paie n'est peut-être pas encore arrivée)
-      return ligne(NOMS[x.poche] || x.poche, x.aVenir ? '<span class="dim">à venir</span>' : eur(x.verse), 'cible ' + eur(x.cible));
-    }).join('') + '<p class="note">Versé jusqu’ici. Le mois se juge à la fin, dans le bilan mensuel.</p></section>';
-    h += '<section class="carte"><h2>' + esc(mois(MS.iso)) + ' · plan 4.0</h2>' + ['btc', 'link', 'pea', 'livret'].map(function (k) {
-      var v = MS[k] || 0, p = P.disponible ? v / P.disponible * 100 : 0;
-      return '<div class="env" style="border-color:#1c2a40"><div class="env-h"><b>' + NOMS[k] + (k === 'btc' && MS.dimanches ? ' <span class="dim">· 25 € × ' + MS.dimanches + ' dimanches</span>' : '') + '</b><strong>' + eur(v) + '</strong></div>' + barre(p, { btc: '#f6a623', link: '#3a7bd5', pea: '#2bb3a3', livret: '#8e6bdb' }[k]) + '</div>';
-    }).join('') + '<p class="note">Disponible ' + eur(P.disponible) + ' par mois · salaire de base ' + eur(g(P, 'base.salaire'), 0) + '</p></section>';
-    if ((Bi.aConfirmer || []).length) h += '<section class="carte"><h2>À confirmer par toi</h2>' + Bi.aConfirmer.map(function (x) { return '<div class="alerte"><i style="background:#8fb3ff"></i><div>' + esc(x) + '</div></div>'; }).join('') + '</section>';
-    if ((Bi.janvier || []).length) h += '<section class="carte"><h2>Point de janvier 2027</h2>' + Bi.janvier.map(function (x, i) { return '<div class="liste"><span>' + (i + 1) + '</span><div>' + esc(x) + '</div></div>'; }).join('') + '</section>';
+  /* ── 4. Dépenses : dépensé / prévu, prélèvements de la paie ── */
+  function depenses() {
+    var B = J.budget, A = J.abonnements || [], Dp = g(J, 'stats.depenses');
+    if (!B) return '<div class="vide">Le Budget n’a pas encore publié son cycle : ouvre le Command Center sur le PC.</div>';
+    var env = B.enveloppes || [], vars = env.filter(function (e) { return e.groupe !== 'fixes'; });
+    var prevu = vars.reduce(function (s, e) { return s + (e.prevu || 0); }, 0), dep = vars.reduce(function (s, e) { return s + (e.depense || 0); }, 0);
+    var reste = vars.reduce(function (s, e) { return s + (e.reste || 0); }, 0), paie = B.prochainePaie, k = paie ? joursAvant(paie) : null;
+    var h = '<section class="carte heros"><div class="duo">' + anneau([{ v: Math.min(dep, prevu), sur: prevu, c: dep > prevu ? NIV.ko : '#a775f0' }], n(prevu ? dep / prevu * 100 : 0, 0) + ' %', 'du prévu', 120)
+      + '<div>' + (reste >= 0 ? '<span>Il te reste</span><div class="gros pos" style="font-size:30px">' + eur(reste) + '</div><div class="sous">' + (k > 0 ? 'soit <b>' + eur(reste / k) + '</b> par jour jusqu’à la paie' : 'la paie arrive') + '</div>'
+        : '<span>Dépassé de</span><div class="gros neg" style="font-size:30px">' + eur(-reste) + '</div><div class="sous">' + eur(dep) + ' dépensés sur ' + eur(prevu) + '</div>')
+      + '<div class="sous">Paie vers le <b>' + jour(paie) + '</b>' + (k != null && k > 0 ? ' · ' + dans(paie) : '') + ', puis tout repart de zéro</div></div></div>'
+      + '<div class="sous">' + esc(B.cycle || '') + ' · rentrées ' + eur(B.rentrees) + '</div></section>';
+    // chaque enveloppe : dépensé sur prévu
+    var tri = vars.slice().sort(function (a, b) { return a.reste - b.reste; });
+    h += '<section class="carte"><h2>Dépensé / prévu</h2>' + tri.map(function (e) {
+      var c = e.reste < 0 ? NIV.ko : (e.prevu > 0 && e.depense / e.prevu > 0.85) ? NIV.surveiller : '#a775f0';
+      return '<div class="env"><div class="env-h"><b>' + esc(e.nom) + '</b><strong class="' + (e.reste < 0 ? 'neg' : '') + '">' + n(e.depense, e.depense >= 100 ? 0 : 2) + ' / ' + n(e.prevu, 0) + ' €</strong></div>' + jauge(e.depense, e.prevu, c)
+        + '<small>' + (e.reste < 0 ? 'dépassé de ' + eur(-e.reste) : 'reste ' + eur(e.reste)) + '</small></div>';
+    }).join('') + '</section>';
+    // prélèvements de la paie en cours
+    var P = B.prelevements;
+    if (P && P.total) h += '<section class="carte"><h2>Prélèvements · ' + esc((B.cycle || '').toLowerCase()) + '</h2><div class="duo">' + anneau([{ v: P.passes, sur: P.total, c: P.passes >= P.total ? NIV.ok : NIV.surveiller }], P.passes + '/' + P.total, 'passés', 110)
+      + '<div><div class="gros" style="font-size:24px">' + (P.passes >= P.total ? 'Tout est payé' : (P.total - P.passes) + ' pas encore passé' + (P.total - P.passes > 1 ? 's' : '')) + '</div><div class="sous">' + eur(P.montantPasse) + ' sur ' + eur(P.montantTotal) + '</div></div></div>'
+      + P.liste.map(function (x) { return '<div class="tache ' + (x.passe ? 'fait' : '') + '"><i>' + (x.passe ? '✓' : '') + '</i><div><b>' + esc(x.nom) + '</b>' + (!x.passe && x.attendu ? '<small>' + (joursAvant(x.attendu) < 0 ? 'attendu le ' + jour(x.attendu) + ', pas encore vu' : 'attendu vers le ' + jour(x.attendu)) + '</small>' : '') + '</div><strong>' + eur(x.montant) + '</strong></div>'; }).join('')
+      + '<p class="note">Sur la paie en cours, pas sur le mois. Un prélèvement apparaît quand le relevé est importé ou la dépense saisie.</p></section>';
+    // dépenses variables des 6 derniers mois
+    if (Dp && Dp.enveloppes && Dp.enveloppes.length) {
+      var cumul = (Dp.enveloppes[0].sixMois || []).map(function (x, i) { return Dp.enveloppes.reduce(function (s, e) { return s + (e.sixMois[i] || 0); }, 0); });
+      var lab = (g(J, 'stats.epargne.mois') || []).map(function (m) { return court(m.iso); }).slice(-cumul.length);
+      h += '<section class="carte"><h2>Dépenses variables · 6 mois</h2>' + barresV(cumul, lab, function (v) { return v > Dp.budget ? NIV.ko : '#a775f0'; }, Dp.budget)
+        + '<div class="sous">Budget de ' + eur(Dp.budget, 0) + ' par mois · en rouge, les mois au-dessus</div></section>';
+    }
+    var bientot = A.filter(function (a) { return a.prochaine && joursAvant(a.prochaine) >= 0 && joursAvant(a.prochaine) <= 14; }).sort(function (a, b) { return a.prochaine < b.prochaine ? -1 : 1; });
+    var parAn = A.reduce(function (s, a) { return s + (a.parAn || 0); }, 0);
+    h += '<section class="carte"><h2>À venir · 14 jours</h2>' + (bientot.length ? bientot.map(function (a) { return ligne(esc(a.nom) + '<em>' + jour(a.prochaine) + ' · ' + dans(a.prochaine) + '</em>', eur(a.montant)); }).join('') : '<div class="dim">Rien dans les 14 prochains jours.</div>')
+      + pli('Tous les abonnements', eur(parAn, 0) + ' / an', A.length + ' repérés', A.map(function (a) {
+        return ligne(esc(a.nom) + '<em>' + esc(a.rythme) + ' · prochain le ' + date(a.prochaine) + '</em>' + (a.alertes || []).map(function (x) { return '<span class="pill o">' + esc(x) + '</span>'; }).join(''), eur(a.montant), eur(a.parAn, 0) + ' / an');
+      }).join('') || '<div class="dim">Aucun abonnement repéré.</div>') + '</section>';
     return h;
   }
 
@@ -310,22 +514,24 @@
     return h;
   }
 
-  var PAGES = { accueil: accueil, budget: budget, crypto: crypto, placements: placements, stats: stats, plan: plan };
+  var PAGES = { capital: capital, situation: situation, afaire: afaire, depenses: depenses, stats: stats };
   function dessinerOnglets() {
+    var nb = 0, ko = 0; try { nb = aFaireCompte(); ko = ((J && J.situation) || []).filter(function (s) { return s.niveau === 'ko'; }).length; } catch (e) { nb = 0; }
     document.getElementById('onglets').innerHTML = ONGLETS.map(function (o) {
-      return '<button data-o="' + o[0] + '" class="' + (o[0] === onglet ? 'on' : '') + '"><svg viewBox="0 0 24 24">' + o[2] + '</svg>' + o[1] + '</button>';
+      return '<button data-o="' + o[0] + '" class="' + (o[0] === onglet ? 'on' : '') + '"><svg viewBox="0 0 24 24">' + o[2] + '</svg>' + o[1]
+        + (o[0] === 'afaire' && nb ? '<span class="pastille">' + nb + '</span>' : '') + (o[0] === 'situation' && ko ? '<span class="pastille">' + ko + '</span>' : '') + '</button>';
     }).join('');
   }
   function dessiner() {
     dessinerOnglets();
     var el = document.getElementById('page');
     el.className = 'p-' + onglet;
-    document.getElementById('titre').textContent = ONGLETS.filter(function (o) { return o[0] === onglet; })[0][1];
+    document.getElementById('titre').textContent = ONGLETS.filter(function (o) { return o[0] === onglet; })[0][3];
     if (!J) return;
     if (J.erreur) { el.innerHTML = '<div class="vide">' + esc(J.erreur) + '</div>'; return; }
     try { el.innerHTML = PAGES[onglet](); } catch (e) { el.innerHTML = '<div class="vide">Cette page n’a pas pu s’afficher (' + esc(e.message) + ').</div>'; }
     document.getElementById('maj').textContent = J.genereLe ? (SOURCE ? 'Chiffres publiés ' : 'Chiffres du PC ') + depuis(J.genereLe) + (J._horsLigne ? ' · hors ligne' : '') : '';
-    if (SOURCE && onglet === 'accueil') el.insertAdjacentHTML('beforeend', '<div class="bas"><button data-verrouiller>Verrouiller ce téléphone</button></div>');
+    if (SOURCE && onglet === 'capital') el.insertAdjacentHTML('beforeend', '<div class="bas"><button data-verrouiller>Verrouiller ce téléphone</button></div>');
   }
   /* Mot de passe demandé une fois ; le téléphone garde la clé (pas le mot de passe). */
   var verrouille = false;
@@ -384,6 +590,8 @@
   });
   document.getElementById('rafraichir').addEventListener('click', function () { if (!verrouille) charger(); });
   document.getElementById('page').addEventListener('click', function (e) {
+    var sit = e.target.closest('.sit[data-o]');   // Situation : un point mène à l'onglet où regarder
+    if (sit && PAGES[sit.getAttribute('data-o')]) { onglet = sit.getAttribute('data-o'); try { localStorage.setItem('cc-tel-onglet', onglet); } catch (x) { /* rien */ } window.scrollTo(0, 0); dessiner(); return; }
     if (e.target.closest('[data-verrouiller]')) { stock.ecrire('cc-cle', null); stock.ecrire('cc-dernier', null); location.reload(); }
     var v = e.target.closest('[data-vue]');
     if (v) { vue = v.getAttribute('data-vue'); stock.ecrire('cc-vue', vue); dessiner(); }
