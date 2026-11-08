@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Command Center">
 <meta name="theme-color" content="#0e0f11">
 <meta name="robots" content="noindex">
-<meta name="cc-version" content="5d4e15bf370660f5">
+<meta name="cc-version" content="0014cbcd02e4ac70">
 <meta name="cc-donnees" content="https://raw.githubusercontent.com/kyrs0/cc-telephone/main/donnees.chiffre.json">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icone.png">
@@ -637,7 +637,7 @@
     }).join('') + '<p class="note">' + esc(L.note) + '</p>') + '</section>';
     var Pj = RP.projet;
     if (Pj) h += '<section class="carte"><h2>Projet · ' + esc(Pj.nom) + '<em>' + (Pj.echeance ? mois(Pj.echeance) : 'sans date') + '</em></h2><div class="gros" style="font-size:28px">' + eur(Pj.deCote, 0) + '<span class="dim" style="font-size:16px"> / ' + (Pj.montant ? eur(Pj.montant, 0) : '—') + '</span></div>'
-      + barre(Pj.pct || 0, '#f5b83d') + '<div class="sous">' + (Pj.parMois != null ? '<b>' + eur(Pj.parMois, 0) + '</b> par mois pour y être' : Pj.complet ? 'prêt' : 'montant ou échéance à remplir sur le PC') + '</div></section>';
+      + barre(Pj.pct || 0, '#f5b83d') + '<div class="sous">' + (Pj.parMois != null ? '<b>' + eur(Pj.parMois, 0) + '</b> par mois pour y être' : Pj.complet ? 'prêt' : Pj.montant ? 'sans date : au Livret A, à ton rythme' : 'montant à remplir sur le PC') + '</div></section>';
     return h;
   }
 
