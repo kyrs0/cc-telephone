@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Command Center">
 <meta name="theme-color" content="#0e0f11">
 <meta name="robots" content="noindex">
-<meta name="cc-version" content="fe31e6d387c335c8">
+<meta name="cc-version" content="dcd34755e0d0f4fc">
 <meta name="cc-donnees" content="https://raw.githubusercontent.com/kyrs0/cc-telephone/main/donnees.chiffre.json">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icone.png">
@@ -150,6 +150,14 @@
   .mv > b { font-variant-numeric: tabular-nums; white-space: nowrap; }
   .perf-t { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; margin-top: 8px; } .perf-t th { color: var(--doux); font-weight: 600; text-align: right; padding: 4px 2px; font-size: 11.5px; } .perf-t th:first-child, .perf-t td:first-child { text-align: left; }
   .perf-t td { text-align: right; padding: 6px 2px; border-top: 1px solid var(--bord); } .perf-t tr.tot td { font-weight: 700; }
+  .route { margin: 16px 6px 4px; } .r-piste { position: relative; height: 14px; background: #1c1d21; border-radius: 99px; } .r-piste > i { position: absolute; left: 0; top: 0; bottom: 0; min-width: 14px; border-radius: 99px; background: linear-gradient(90deg, #f7c96b, #f5a623); }
+  .r-pt { position: absolute; top: 50%; width: 6px; height: 6px; border-radius: 50%; background: #1c1d21; border: 1.5px solid #4a4d55; transform: translate(-50%, -50%); } .r-pt.gd { width: 9px; height: 9px; } .r-pt.fait { background: #fff; border-color: #fff; }
+  .r-pt.rec::after { content: ""; position: absolute; left: 50%; top: -8px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--or); }
+  .r-pt.pro { width: 22px; height: 22px; background: #0f1013; border: 2px solid var(--or); display: flex; align-items: center; justify-content: center; z-index: 2; } .r-pt.pro svg { width: 11px; height: 11px; fill: none; stroke: #fff; stroke-width: 2.2; }
+  .r-pt.but { width: 20px; height: 20px; background: #0f1013; border: 2px solid #eee; box-shadow: inset 0 0 0 3px #0f1013, inset 0 0 0 8px #eee; }
+  .r-grad { display: flex; justify-content: space-between; font-size: 11px; color: var(--doux); margin-top: 8px; }
+  .r-pro { display: flex; justify-content: space-between; gap: 10px; margin-top: 14px; } .r-pro small { display: block; color: var(--doux); font-size: 11.5px; } .r-pro b { font: 750 18px/1.25 var(--titre); }
+  .r-rec { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 9px 12px; border-radius: 99px; background: #eee; color: #111; font-weight: 700; font-size: 13px; } .r-rec svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.2; flex: 0 0 auto; } .r-rec:not(.on) { background: transparent; color: var(--doux); border: 1px dashed #3a3c42; }
   .paliers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; } .pal { background: #1b1d22; border-radius: 12px; padding: 10px 8px; text-align: center; border: 1px solid transparent; }
   .pal b { display: block; font: 750 17px/1.2 var(--titre); } .pal small { display: block; color: var(--doux); font-size: 11px; margin-top: 2px; } .pal .barre { height: 5px; margin: 7px 0 0; }
   .pal.fait { background: rgba(62,207,142,.12); } .pal.fait b { color: var(--pos); } .pal.courant { border-color: var(--or); } .pal em { display: block; font-style: normal; font-size: 11px; color: var(--or); margin-top: 4px; }
@@ -584,11 +592,24 @@
   /* Capital : paliers, répartition cible, liquidités par rôle, projet (08/11/2026) */
   function reperesCapital() {
     var RP = J.reperes; if (!RP) return '';
-    var h = '<section class="carte"><h2>Paliers<em>dates du couloir</em></h2><div class="paliers">' + RP.paliers.map(function (p) {
-      var st = p.atteint ? 'fait' : p.montant === RP.prochainPalier ? 'courant' : '';
-      var d = p.atteint ? 'franchi ' + court(p.atteint) : p.dateHaute ? court(p.dateHaute) + ' ' + String(p.dateHaute).slice(2, 4) + (p.dateBasse && p.dateBasse !== p.dateHaute ? ' – ' + court(p.dateBasse) + ' ' + String(p.dateBasse).slice(2, 4) : '') : 'après 2032';
-      return '<div class="pal ' + st + '"><b>' + ke(p.montant) + '</b><small>' + d + '</small>' + barre(p.pct, p.atteint ? '#3ecf8e' : '#f5b83d') + (p.recompense ? '<em>' + esc(p.recompense) + '</em>' : '') + '</div>';
-    }).join('') + '</div></section>';
+    /* Route des 100 000 € (08/11/2026) : un palier tous les 5 000 €, cadenas sur le prochain */
+    var cap = RP.auCours || 0, x = Math.max(0, Math.min(100, cap / 1000)), pro = null, der = null;
+    RP.paliers.forEach(function (p) { if (p.atteint) der = p; if (!pro && !p.atteint) pro = p; });
+    var cad = '<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+    var quand = function (p) { return p.atteint ? 'franchi en ' + mois(p.atteint) : p.franchiAuCours ? 'passé au cours, validé au prochain 10' : p.dateHaute ? 'couloir : ' + court(p.dateHaute) + ' ' + String(p.dateHaute).slice(2, 4) + (p.dateBasse && p.dateBasse !== p.dateHaute ? ' – ' + court(p.dateBasse) + ' ' + String(p.dateBasse).slice(2, 4) : '') : 'couloir : après 2032'; };
+    var h = '<section class="carte"><h2>Route des 100 k€<em>un palier tous les 5 000 €</em></h2>'
+      + '<div class="gros" style="font-size:30px">' + eur(cap, 0) + '<span class="dim" style="font-size:15px"> · ' + n(x, 1) + ' % du chemin</span></div>'
+      + '<div class="route"><div class="r-piste"><i style="width:' + x.toFixed(2) + '%"></i>' + RP.paliers.map(function (p) {
+        var c = 'r-pt' + (p.atteint || p.franchiAuCours ? ' fait' : '') + (pro && p.montant === pro.montant ? ' pro' : '') + (p.montant % 10000 === 0 ? ' gd' : '') + (p.montant === 100000 ? ' but' : '') + (p.recompense ? ' rec' : '');
+        return '<span class="' + c + '" style="left:' + (p.montant / 1000) + '%">' + (pro && p.montant === pro.montant ? cad : '') + '</span>';
+      }).join('') + '</div><div class="r-grad"><span>0 €</span><span>50 k€</span><span>100 k€</span></div></div>';
+    if (pro) {
+      var pc = Math.max(0, Math.min(100, (cap - (pro.montant - 5000)) / 50));
+      h += '<div class="r-pro"><div><small>Prochain palier</small><b>' + eur(pro.montant, 0) + '</b></div><div style="text-align:right"><small>' + quand(pro) + '</small><b>' + (pro.reste > 0 ? 'reste ' + eur(pro.reste, 0) : 'passé') + '</b></div></div>'
+        + barre(pc, '#f5b83d') + '<div class="r-rec' + (pro.recompense ? ' on' : '') + '">' + cad + (pro.recompense ? esc(pro.recompense) : 'récompense à choisir sur le PC') + '</div>';
+    }
+    if (der) h += '<div class="sous">Dernier palier franchi : <b>' + eur(der.montant, 0) + '</b> (' + mois(der.atteint) + ')' + (der.recompense ? ' · ' + esc(der.recompense) : '') + '</div>';
+    h += '</section>';
     var Rp = RP.repartition;
     if (Rp && Rp.choisie) h += '<section class="carte"><h2>Répartition cible<em>à ' + ke(Rp.palier) + '</em></h2>' + Rp.poches.map(function (p) {
       return ligne(esc(p.nom), n(p.pct, 0) + ' % <span class="dim">/ ' + n(p.cible, 0) + ' %</span>', (p.ecartPts >= 0 ? '+' : '') + n(p.ecartPts, 0) + ' pt · ' + eurS(p.ecartEur, 0));
