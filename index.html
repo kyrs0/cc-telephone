@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Command Center">
 <meta name="theme-color" content="#0e0f11">
 <meta name="robots" content="noindex">
-<meta name="cc-version" content="6d9e53fdda352d8b">
+<meta name="cc-version" content="30df40c9ebd23446">
 <meta name="cc-donnees" content="https://raw.githubusercontent.com/kyrs0/cc-telephone/main/donnees.chiffre.json">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icone.png">
@@ -391,7 +391,8 @@
   /* ── 3. À faire : le mois dans l'ordre ── */
   function aFaireCompte() {
     var X = J && J.aFaire; if (!X || !X.etapes) return 0;
-    return X.etapes.filter(function (e) { return e.etat === 'a-faire' && (!X.sections[e.section] || joursAvant(X.sections[e.section]) <= 0); }).length;
+    return X.etapes.filter(function (e) { return e.etat === 'a-faire' && (!X.sections[e.section] || joursAvant(X.sections[e.section]) <= 0); }).length
+      + (X.revolut && !X.revolut.fait ? 1 : 0);   // relevé Revolut de la semaine pas encore importé
   }
   function afaire() {
     var X = J.aFaire, Bi = J.bilan || {};
@@ -403,12 +404,21 @@
     var PM = X.planMois;
     if (PM) h += '<section class="carte"><h2>À investir en ' + esc(moisNom(PM.mois)) + '</h2><div class="duo">' + anneau([{ v: PM.verse, sur: PM.cible, c: '#3ecf8e' }], ke(PM.verse), 'sur ' + ke(PM.cible), 128)
       + '<div class="leg-v">' + PM.lignes.map(function (x) { return '<div class="lv-b"><span><i style="background:' + COUL[x.poche] + '"></i>' + NOMS[x.poche] + (x.mois ? ' ' + esc(deMois(x.mois)) : '') + '</span><b>' + n(x.verse, 0) + ' / ' + n(x.cible, 0) + ' €</b>' + jauge(x.verse, x.cible, COUL[x.poche]) + '</div>'; }).join('') + '</div></div></section>';
-    // chaque dimanche : le bitcoin
-    if (X.btc) {
-      var dims = [];
-      for (var i = 0; i < X.btc.dimanches; i++) dims.push('<i class="' + (i < X.btc.achats ? 'on' : '') + '"></i>');
-      h += '<section class="carte"><h2>Chaque dimanche · bitcoin ' + eur(X.btc.montant, 0) + '</h2><div class="dims">' + dims.join('') + '</div>'
-        + '<div class="sous"><b>' + X.btc.achats + ' sur ' + X.btc.dimanches + '</b> ce mois · prochain <b>' + jour(X.btc.prochain) + '</b> (' + dans(X.btc.prochain) + ')</div></section>';
+    // chaque dimanche : le bitcoin et le relevé Revolut (guide v13)
+    if (X.btc || X.revolut) {
+      h += '<section class="carte"><h2>Chaque dimanche</h2>';
+      if (X.btc) {
+        var dims = [];
+        for (var i = 0; i < X.btc.dimanches; i++) dims.push('<i class="' + (i < X.btc.achats ? 'on' : '') + '"></i>');
+        h += '<div class="tache"><i style="border-color:#f6a623"></i><div><b>Bitcoin ' + eur(X.btc.montant, 0) + '</b><div class="dims">' + dims.join('') + '</div>'
+          + '<small>' + X.btc.achats + ' sur ' + X.btc.dimanches + ' ce mois · prochain ' + jour(X.btc.prochain) + ' (' + dans(X.btc.prochain) + ')</small></div></div>';
+      }
+      if (X.revolut) {
+        var Rv = X.revolut;
+        h += '<div class="tache ' + (Rv.fait ? 'fait' : 'maint') + '"><i>' + (Rv.fait ? '✓' : '') + '</i><div><b>Relevé Revolut ' + (Rv.fait ? '' : '<span class="et or">' + (joursAvant(Rv.depuis) === 0 ? 'aujourd’hui' : 'en retard') + '</span>') + '</b>'
+          + '<small>' + (Rv.fait ? 'importé le ' + jour(Rv.dernier) : 'PDF de l’appli Revolut, par LocalSend ou les Téléchargements : importé tout seul' + (Rv.dernier ? ' · dernier le ' + jour(Rv.dernier) : '')) + '</small></div></div>';
+      }
+      h += '</section>';
     }
     var TITRES = { paie: 'Après la paie', le10: 'Le 10', fin: 'Fin du mois' };
     ['paie', 'le10', 'fin'].forEach(function (sec) {
