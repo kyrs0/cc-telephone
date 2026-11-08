@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Command Center">
 <meta name="theme-color" content="#0e0f11">
 <meta name="robots" content="noindex">
-<meta name="cc-version" content="dcd34755e0d0f4fc">
+<meta name="cc-version" content="5d4e15bf370660f5">
 <meta name="cc-donnees" content="https://raw.githubusercontent.com/kyrs0/cc-telephone/main/donnees.chiffre.json">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icone.png">
@@ -150,6 +150,8 @@
   .mv > b { font-variant-numeric: tabular-nums; white-space: nowrap; }
   .perf-t { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; margin-top: 8px; } .perf-t th { color: var(--doux); font-weight: 600; text-align: right; padding: 4px 2px; font-size: 11.5px; } .perf-t th:first-child, .perf-t td:first-child { text-align: left; }
   .perf-t td { text-align: right; padding: 6px 2px; border-top: 1px solid var(--bord); } .perf-t tr.tot td { font-weight: 700; }
+  .wl-l { display: flex; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--bord); } .wl-l:first-of-type { border-top: 0; } .wl-l > i { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; } .wl-l > div:nth-child(2) { flex: 1; min-width: 0; }
+  .wl-l b { display: block; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .wl-l small { display: block; color: var(--doux); font-size: 12px; } .wl-p { text-align: right; } .wl-p b { font-variant-numeric: tabular-nums; }
   .route { margin: 16px 6px 4px; } .r-piste { position: relative; height: 14px; background: #1c1d21; border-radius: 99px; } .r-piste > i { position: absolute; left: 0; top: 0; bottom: 0; min-width: 14px; border-radius: 99px; background: linear-gradient(90deg, #f7c96b, #f5a623); }
   .r-pt { position: absolute; top: 50%; width: 6px; height: 6px; border-radius: 50%; background: #1c1d21; border: 1.5px solid #4a4d55; transform: translate(-50%, -50%); } .r-pt.gd { width: 9px; height: 9px; } .r-pt.fait { background: #fff; border-color: #fff; }
   .r-pt.rec::after { content: ""; position: absolute; left: 50%; top: -8px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--or); }
@@ -610,6 +612,21 @@
     }
     if (der) h += '<div class="sous">Dernier palier franchi : <b>' + eur(der.montant, 0) + '</b> (' + mois(der.atteint) + ')' + (der.recompense ? ' · ' + esc(der.recompense) : '') + '</div>';
     h += '</section>';
+    /* Watchlist et réserve d'achat (08/11/2026) : actions et prix cibles choisis par Tom sur le PC */
+    var W = RP.watchlist;
+    if (W) {
+      var sy = function (d) { return d === 'USD' ? '$' : d === 'EUR' ? '€' : (d || ''); };
+      var ST = { achat: ['#3ecf8e', 'zone d’achat'], proche: ['#f5c542', 'proche'], surveiller: ['#f59e42', 'à surveiller'], hors: ['#ef5b5b', 'hors zone'] };
+      h += '<section class="carte"><h2>Watchlist<em>' + W.actions.length + ' / ' + W.places + ' places</em></h2>';
+      if (!W.actions.length) h += '<div class="sous">Actions et prix cibles à choisir sur le PC (page Watchlist).' + (W.prochainePlace ? ' Une place de plus à ' + eur(W.prochainePlace, 0) + '.' : '') + '</div>';
+      W.actions.forEach(function (a) {
+        var st = ST[a.statut];
+        h += '<div class="wl-l"><i style="background:' + (st ? st[0] : '#4a4d55') + '"></i><div><b>' + esc(a.nom) + '</b><small>' + (st ? st[1] + ' · ' + (a.ecart <= 0 ? n(-a.ecart, 1) + ' % sous ta cible' : n(a.ecart, 1) + ' % au-dessus') : 'cours à venir') + (a.var1m != null ? ' · ' + (a.var1m >= 0 ? '+' : '') + n(a.var1m, 1) + ' % sur 1 mois' : '') + '</small></div>'
+          + '<div class="wl-p"><b>' + (a.cours != null ? n(a.cours, 2) + ' ' + sy(a.devise) : '—') + '</b><small>cible ' + n(a.cible, 2) + ' ' + sy(a.devise) + '</small></div></div>';
+      });
+      var Rv = W.reserve;
+      h += '<div class="r-pro"><div><small>Réserve d’achat' + (Rv && Rv.ou ? ' · ' + esc(Rv.ou) : '') + '</small><b>' + (Rv && Rv.solde != null ? eur(Rv.solde, 0) : 'à remplir') + '</b></div><div style="text-align:right"><small>chaque mois</small><b>' + (Rv && Rv.parMois != null ? '+' + eur(Rv.parMois, 0) : '—') + '</b></div></div></section>';
+    }
     var Rp = RP.repartition;
     if (Rp && Rp.choisie) h += '<section class="carte"><h2>Répartition cible<em>à ' + ke(Rp.palier) + '</em></h2>' + Rp.poches.map(function (p) {
       return ligne(esc(p.nom), n(p.pct, 0) + ' % <span class="dim">/ ' + n(p.cible, 0) + ' %</span>', (p.ecartPts >= 0 ? '+' : '') + n(p.ecartPts, 0) + ' pt · ' + eurS(p.ecartEur, 0));
