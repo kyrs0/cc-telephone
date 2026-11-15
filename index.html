@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Command Center">
 <meta name="theme-color" content="#0e0f11">
 <meta name="robots" content="noindex">
-<meta name="cc-version" content="0014cbcd02e4ac70">
+<meta name="cc-version" content="09e58ffbafdf3a9a">
 <meta name="cc-donnees" content="https://raw.githubusercontent.com/kyrs0/cc-telephone/main/donnees.chiffre.json">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icone.png">
@@ -565,7 +565,8 @@
         + '<div style="margin-top:10px">' + lignes.map(function (l) { return '<div class="pont-l"><span>' + l[0] + '</span>' + pb(l[1]) + '<b class="' + cls(l[1]) + '">' + eurS(l[1]) + '</b></div>'; }).join('')
         + '<div class="pont-l tot"><span>Variation</span>' + pb(P.variation) + '<b>' + eurS(P.variation) + '</b></div></div>'
         + (P.interne ? '<p class="note">Entre poches : ' + eur(P.interne) + ' du trading vers le Livret A (sans effet sur le total).</p>' : '')
-        + pli('Poche par poche', '', '', P.poches.map(function (x) { return ligne(esc(x.nom), '<span class="' + cls(x.variation) + '">' + eurS(x.variation) + '</span>', 'versé ' + eurS(x.versements - (x.interne || 0), 0) + ' · marché ' + eurS(x.marche, 0) + (x.frais ? ' · frais ' + eur(x.frais) : '')); }).join('')) + '</section>';
+        // 15/11/2026 (Tom : « −1 200 en trading, c'est pas une perf mais un retrait ») : l'argent passé d'une poche à l'autre s'affiche à part
+        + pli('Poche par poche', '', '', P.poches.map(function (x) { var iv = x.interne || 0; return ligne(esc(x.nom), '<span class="' + cls(x.variation) + '">' + eurS(x.variation) + '</span>', (iv ? (iv < 0 ? 'retrait ' + eur(-iv, 0) + ' vers le Livret A (pas une perte)' : 'reçu ' + eur(iv, 0) + ' du trading') + ' · ' : '') + 'versé ' + eurS(x.versements - iv, 0) + ' · marché ' + eurS(x.marche, 0) + (x.frais ? ' · frais ' + eur(x.frais) : '')); }).join('')) + '</section>';
     }
     // contre le MSCI World
     var Cu = RP.cumul || {}, Ps = RP.ponts || [];
