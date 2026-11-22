@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Command Center">
 <meta name="theme-color" content="#0e0f11">
 <meta name="robots" content="noindex">
-<meta name="cc-version" content="09e58ffbafdf3a9a">
+<meta name="cc-version" content="83aa7bc2e70edea3">
 <meta name="cc-donnees" content="https://raw.githubusercontent.com/kyrs0/cc-telephone/main/donnees.chiffre.json">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icone.png">
@@ -617,13 +617,13 @@
     var W = RP.watchlist;
     if (W) {
       var sy = function (d) { return d === 'USD' ? '$' : d === 'EUR' ? '€' : (d || ''); };
-      var ST = { achat: ['#3ecf8e', 'zone d’achat'], proche: ['#f5c542', 'proche'], surveiller: ['#f59e42', 'à surveiller'], hors: ['#ef5b5b', 'hors zone'] };
+      var ST = { achat: ['#3ecf8e', 'en zone 1'], entre: ['#2bb37a', 'entre les zones'], zone2: ['#5b8def', 'en zone 2'], proche: ['#f5c542', 'proche'], surveiller: ['#f59e42', 'à surveiller'], hors: ['#ef5b5b', 'hors zone'] };
       h += '<section class="carte"><h2>Watchlist<em>' + W.actions.length + ' / ' + W.places + ' places</em></h2>';
-      if (!W.actions.length) h += '<div class="sous">Actions et prix cibles à choisir sur le PC (page Watchlist).' + (W.prochainePlace ? ' Une place de plus à ' + eur(W.prochainePlace, 0) + '.' : '') + '</div>';
+      if (!W.actions.length) h += '<div class="sous">Actions et zones à choisir sur le PC (page Watchlist).' + (W.prochainePlace ? ' Une place de plus à ' + eur(W.prochainePlace, 0) + '.' : '') + '</div>';
       W.actions.forEach(function (a) {
         var st = ST[a.statut];
-        h += '<div class="wl-l"><i style="background:' + (st ? st[0] : '#4a4d55') + '"></i><div><b>' + esc(a.nom) + '</b><small>' + (st ? st[1] + ' · ' + (a.ecart <= 0 ? n(-a.ecart, 1) + ' % sous ta cible' : n(a.ecart, 1) + ' % au-dessus') : 'cours à venir') + (a.var1m != null ? ' · ' + (a.var1m >= 0 ? '+' : '') + n(a.var1m, 1) + ' % sur 1 mois' : '') + '</small></div>'
-          + '<div class="wl-p"><b>' + (a.cours != null ? n(a.cours, 2) + ' ' + sy(a.devise) : '—') + '</b><small>cible ' + n(a.cible, 2) + ' ' + sy(a.devise) + '</small></div></div>';
+        h += '<div class="wl-l"><i style="background:' + (st ? st[0] : '#4a4d55') + '"></i><div><b>' + esc(a.nom) + '</b><small>' + (st ? st[1] + ' · ' + (a.ecart <= 0 ? n(-a.ecart, 1) + ' % sous la zone 1' : n(a.ecart, 1) + ' % au-dessus de la zone 1') : 'cours à venir') + (a.var1m != null ? ' · ' + (a.var1m >= 0 ? '+' : '') + n(a.var1m, 1) + ' % sur 1 mois' : '') + '</small></div>'
+          + '<div class="wl-p"><b>' + (a.cours != null ? n(a.cours, 2) + ' ' + sy(a.devise) : '—') + '</b><small>' + (a.zones && a.zones.length ? a.zones.map(function (z, i) { return 'z' + (i + 1) + ' ' + (z.bas != null ? n(z.bas, 0) + '–' : '<') + n(z.haut, 0); }).join(' · ') + ' ' + sy(a.devise) : 'cible ' + n(a.cible, 2) + ' ' + sy(a.devise)) + '</small></div></div>';
       });
       var Rv = W.reserve;
       h += '<div class="r-pro"><div><small>Réserve d’achat' + (Rv && Rv.ou ? ' · ' + esc(Rv.ou) : '') + '</small><b>' + (Rv && Rv.solde != null ? eur(Rv.solde, 0) : 'à remplir') + '</b></div><div style="text-align:right"><small>chaque mois</small><b>' + (Rv && Rv.parMois != null ? '+' + eur(Rv.parMois, 0) : '—') + '</b></div></div></section>';
