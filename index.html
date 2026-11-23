@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Command Center">
 <meta name="theme-color" content="#0e0f11">
 <meta name="robots" content="noindex">
-<meta name="cc-version" content="83aa7bc2e70edea3">
+<meta name="cc-version" content="ab46f7fbcc38fa40">
 <meta name="cc-donnees" content="https://raw.githubusercontent.com/kyrs0/cc-telephone/main/donnees.chiffre.json">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icone.png">
@@ -616,7 +616,7 @@
     /* Watchlist et réserve d'achat (08/11/2026) : actions et prix cibles choisis par Tom sur le PC */
     var W = RP.watchlist;
     if (W) {
-      var sy = function (d) { return d === 'USD' ? '$' : d === 'EUR' ? '€' : (d || ''); };
+      var sy = function (d) { return d === 'USD' ? '$' : d === 'JPY' ? '¥' : d === 'EUR' ? '€' : (d || ''); };
       var ST = { achat: ['#3ecf8e', 'en zone 1'], entre: ['#2bb37a', 'entre les zones'], zone2: ['#5b8def', 'en zone 2'], proche: ['#f5c542', 'proche'], surveiller: ['#f59e42', 'à surveiller'], hors: ['#ef5b5b', 'hors zone'] };
       h += '<section class="carte"><h2>Watchlist<em>' + W.actions.length + ' / ' + W.places + ' places</em></h2>';
       if (!W.actions.length) h += '<div class="sous">Actions et zones à choisir sur le PC (page Watchlist).' + (W.prochainePlace ? ' Une place de plus à ' + eur(W.prochainePlace, 0) + '.' : '') + '</div>';
