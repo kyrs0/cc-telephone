@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Command Center">
 <meta name="theme-color" content="#0e0f11">
 <meta name="robots" content="noindex">
-<meta name="cc-version" content="9485123c71733e85">
+<meta name="cc-version" content="4e10aaff36ebc540">
 <meta name="cc-donnees" content="https://raw.githubusercontent.com/kyrs0/cc-telephone/main/donnees.chiffre.json">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icone.png">
@@ -623,7 +623,7 @@
       W.actions.forEach(function (a) {
         var st = ST[a.statut];
         h += '<div class="wl-l"><i style="background:' + (st ? st[0] : '#4a4d55') + '"></i><div><b>' + esc(a.nom) + '</b><small>' + (st ? st[1] + ' · ' + (a.ecart <= 0 ? n(-a.ecart, 1) + ' % sous la zone 1' : n(a.ecart, 1) + ' % au-dessus de la zone 1') : 'cours à venir') + (a.var1m != null ? ' · ' + (a.var1m >= 0 ? '+' : '') + n(a.var1m, 1) + ' % sur 1 mois' : '') + (a.per ? ' · PER ' + n(a.per, 1) : '') + (a.resultats ? ' · résultats le ' + a.resultats.split('-').reverse().slice(0, 2).join('/') : '') + '</small></div>'
-          + '<div class="wl-p"><b>' + (a.cours != null ? n(a.cours, 2) + ' ' + sy(a.devise) : '—') + '</b><small>' + (a.zones && a.zones.length ? a.zones.map(function (z, i) { return 'z' + (i + 1) + ' ' + (z.bas != null ? n(z.bas, 0) + '–' : '<') + n(z.haut, 0); }).join(' · ') + ' ' + sy(a.devise) : 'cible ' + n(a.cible, 2) + ' ' + sy(a.devise)) + '</small></div></div>';
+          + '<div class="wl-p"><b>' + (a.cours != null ? n(a.cours, 2) + ' ' + sy(a.devise) : '—') + '</b><small>' + (a.zones && a.zones.length ? a.zones.map(function (z, i) { return 'z' + (i + 1) + ' ' + (z.bas != null ? n(z.bas, 0) + '–' : '<') + n(z.haut, 0); }).join(' · ') + ' ' + sy(a.devise) + (a.devise !== 'EUR' && a.zonesEur && a.zonesEur[0] && a.zonesEur[0].haut ? ' (z1 ≈ ' + n(a.zonesEur[0].haut, 0) + ' €)' : '') : 'cible ' + n(a.cible, 2) + ' ' + sy(a.devise)) + '</small></div></div>';
       });
       var Rv = W.reserve;
       h += '<div class="r-pro"><div><small>Réserve d’achat' + (Rv && Rv.ou ? ' · ' + esc(Rv.ou) : '') + '</small><b>' + (Rv && Rv.solde != null ? eur(Rv.solde, 0) : 'à remplir') + '</b></div><div style="text-align:right"><small>chaque mois</small><b>' + (Rv && Rv.parMois != null ? '+' + eur(Rv.parMois, 0) : '—') + '</b></div></div></section>';
