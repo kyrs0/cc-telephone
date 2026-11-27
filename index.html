@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Command Center">
 <meta name="theme-color" content="#0e0f11">
 <meta name="robots" content="noindex">
-<meta name="cc-version" content="4e10aaff36ebc540">
+<meta name="cc-version" content="33fc38a747a192f1">
 <meta name="cc-donnees" content="https://raw.githubusercontent.com/kyrs0/cc-telephone/main/donnees.chiffre.json">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icone.png">
@@ -627,6 +627,14 @@
       });
       var Rv = W.reserve;
       h += '<div class="r-pro"><div><small>Réserve d’achat' + (Rv && Rv.ou ? ' · ' + esc(Rv.ou) : '') + '</small><b>' + (Rv && Rv.solde != null ? eur(Rv.solde, 0) : 'à remplir') + '</b></div><div style="text-align:right"><small>chaque mois</small><b>' + (Rv && Rv.parMois != null ? '+' + eur(Rv.parMois, 0) : '—') + '</b></div></div></section>';
+    }
+    /* Escalier de la liberté (27/11/2026) : les dépenses que le capital pourrait payer seul, à 4 % par an */
+    var Lb = RP.liberte;
+    if (Lb && Lb.marches && Lb.marches.length) {
+      h += '<section class="carte"><h2>Escalier de la liberté<em>' + Lb.faites + ' / ' + Lb.marches.length + ' marches</em></h2>'
+        + '<div class="sous">À 4 % par an, ton capital pourrait te verser ≈ <b>' + n(Lb.rente, 2) + ' €/mois</b>' + (Lb.faites ? ' : ' + Lb.marches.filter(function (m) { return m.atteinte; }).map(function (m) { return esc(m.nom); }).join(', ') + ' déjà payés' : '') + '.</div>'
+        + (Lb.prochaine ? '<div class="r-pro"><div><small>Prochaine marche</small><b>' + esc(Lb.prochaine.nom) + '</b></div><div style="text-align:right"><small>à</small><b>' + eur(Lb.prochaine.capital, 0) + '</b></div></div>' : '')
+        + barre(Lb.pct || 0, '#3ecf8e') + '<div class="sous">Plus besoin de salaire à <b>' + eur(Lb.objectif, 0) + '</b> (' + n(Lb.pct || 0, 1) + ' % du chemin)</div></section>';
     }
     var Rp = RP.repartition;
     if (Rp && Rp.choisie) h += '<section class="carte"><h2>Répartition cible<em>à ' + ke(Rp.palier) + '</em></h2>' + Rp.poches.map(function (p) {
