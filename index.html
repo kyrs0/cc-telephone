@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Command Center">
 <meta name="theme-color" content="#0e0f11">
 <meta name="robots" content="noindex">
-<meta name="cc-version" content="33fc38a747a192f1">
+<meta name="cc-version" content="c02e844926bd3b2e">
 <meta name="cc-donnees" content="https://raw.githubusercontent.com/kyrs0/cc-telephone/main/donnees.chiffre.json">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icone.png">
@@ -396,6 +396,19 @@
   }
   function addMois(iso, k) { var p = iso.split('-').map(Number), d = new Date(p[0], p[1] - 1 + k, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
 
+  /* Copilote (27/11/2026) : le briefing (lu à voix haute), les prochains jours, la discipline, le crash-test, le fantôme MSCI World, les 10 000 futurs */
+  function copiloteTel() {
+    var C = J.copilote; if (!C) return '';
+    var h = '<section class="carte"><h2>Copilote<em>ton briefing</em></h2><div class="sous" style="font-size:15px;line-height:1.55">' + esc(C.briefing) + '</div><button data-lire style="margin-top:10px;border:0;border-radius:12px;padding:9px 14px;font-weight:700;background:#7c5cff;color:#fff">▶ Écouter</button></section>';
+    if (C.calendrier && C.calendrier.length) h += '<section class="carte"><h2>Les prochains jours</h2>' + C.calendrier.slice(0, 6).map(function (e) { return ligne(esc(e.quoi), esc(e.date.split('-').reverse().slice(0, 2).join('/')), esc(e.detail)); }).join('') + '</section>';
+    var x = [];
+    if (C.discipline && C.discipline.score != null) x.push(ligne('Discipline', C.discipline.score + ' %', C.discipline.checks.filter(function (c) { return c.sur; }).map(function (c) { return esc(c.regle) + ' ' + c.fait + '/' + c.sur; }).join(' · ')));
+    if (C.crash) x.push(ligne('Sans salaire, tu tiens', esc(C.crash[1].chiffre), 'krach −40 % : ' + esc(C.crash[2].chiffre)));
+    if (C.fantome) x.push(ligne('Toi contre le fantôme MSCI World', (C.fantome.ecart >= 0 ? '+' : '') + eur(C.fantome.ecart, 0), eur(C.fantome.reel, 0) + ' contre ' + eur(C.fantome.fantome, 0)));
+    if (C.futurs) x.push(ligne('10 000 futurs', n(C.futurs.chance100k, 1) + ' %', 'atteignent 100 000 € en 2032 · médiane ' + eur(C.futurs.mediane2032, 0)));
+    if (x.length) h += '<section class="carte"><h2>En un coup d’œil</h2>' + x.join('') + '</section>';
+    return h;
+  }
   /* ── 2. Situation : ce qui coince, ce qui va ── */
   function situation() {
     var S = J.situation || [];
@@ -410,6 +423,7 @@
     };
     var coince = S.filter(function (s) { return s.niveau === 'ko' || s.niveau === 'surveiller'; }).sort(function (a, b) { return (a.niveau === 'ko' ? 0 : 1) - (b.niveau === 'ko' ? 0 : 1); });
     var va = S.filter(function (s) { return s.niveau === 'ok' || s.niveau === 'neutre'; }).sort(function (a, b) { return (a.niveau === 'ok' ? 0 : 1) - (b.niveau === 'ok' ? 0 : 1); });
+    h = copiloteTel() + h;   // Copilote (27/11/2026) en tête de Situation
     if (coince.length) h += '<section class="carte"><h2 style="color:' + NIV.ko + '">Ce qui coince</h2>' + coince.map(item).join('') + '</section>';
     if (va.length) h += '<section class="carte"><h2 style="color:' + NIV.ok + '">Ce qui va</h2>' + va.map(item).join('') + '</section>';
     return h + '<p class="note" style="text-align:center">Touche un point pour aller voir le détail.</p>';
@@ -726,6 +740,7 @@
   });
   document.getElementById('rafraichir').addEventListener('click', function () { if (!verrouille) charger(); });
   document.getElementById('page').addEventListener('click', function (e) {
+    if (e.target.closest('[data-lire]') && J && J.copilote) { try { speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(J.copilote.briefing); u.lang = 'fr-FR'; speechSynthesis.speak(u); } catch (x) { /* voix indisponible */ } return; }
     var sit = e.target.closest('.sit[data-o]');   // Situation : un point mène à l'onglet où regarder
     if (sit && PAGES[sit.getAttribute('data-o')]) { onglet = sit.getAttribute('data-o'); try { localStorage.setItem('cc-tel-onglet', onglet); } catch (x) { /* rien */ } window.scrollTo(0, 0); dessiner(); return; }
     if (e.target.closest('[data-verrouiller]')) { stock.ecrire('cc-cle', null); stock.ecrire('cc-dernier', null); location.reload(); }
