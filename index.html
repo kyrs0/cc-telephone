@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Command Center">
 <meta name="theme-color" content="#0e0f11">
 <meta name="robots" content="noindex">
-<meta name="cc-version" content="ecd53de0c212ca31">
+<meta name="cc-version" content="7b158ba25094f5a5">
 <meta name="cc-donnees" content="https://raw.githubusercontent.com/kyrs0/cc-telephone/main/donnees.chiffre.json">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icone.png">
@@ -400,10 +400,15 @@
   function copiloteTel() {
     var C = J.copilote; if (!C) return '';
     var BP = C.briefingPoints || [];   // briefing en 5 points (28/11/2026)
-    var h = '<section class="carte"><h2>Copilote<em>ton briefing</em></h2>' + (BP.length ? BP.map(function (p) { return '<div style="padding:6px 0;border-top:1px solid rgba(127,127,127,.18)"><b style="display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:' + (p.id === 'alertes' ? (p.nb ? '#ef4444' : '#22c55e') : '#7c5cff') + '">' + esc(p.titre) + '</b><span style="font-size:14.5px;line-height:1.5">' + esc(p.texte) + '</span></div>'; }).join('') : '<div class="sous" style="font-size:15px;line-height:1.55">' + esc(C.briefing) + '</div>') + '<button data-lire style="margin-top:10px;border:0;border-radius:12px;padding:9px 14px;font-weight:700;background:#7c5cff;color:#fff">▶ Écouter</button></section>';
+    var h = '<section class="carte"><h2>Copilote<em>ton briefing</em></h2>' + (BP.length ? BP.map(function (p) { return '<div style="padding:6px 0;border-top:1px solid rgba(127,127,127,.18)"><b style="display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:' + (p.id === 'alertes' ? (p.nb ? '#ef4444' : '#22c55e') : '#7c5cff') + '">' + esc(p.titre) + '</b><span style="font-size:14.5px;line-height:1.5">' + esc(p.texte) + '</span></div>'; }).join('') : '<div class="sous" style="font-size:15px;line-height:1.55">' + esc(C.briefing) + '</div>') + '<button data-lire style="margin-top:10px;border:0;border-radius:12px;padding:9px 14px;font-weight:700;background:#7c5cff;color:#fff">▶ Écouter</button>'
+      + '<div style="display:flex;gap:6px;margin-top:12px"><input data-q enterkeyhint="send" placeholder="Pose ta question : mon livret, Keyence, restaurants…" style="flex:1;min-width:0;border:1px solid rgba(127,127,127,.35);border-radius:12px;padding:10px 12px;font:inherit;font-size:16px;background:transparent;color:inherit">'
+      + '<button data-demander style="border:0;border-radius:12px;padding:9px 14px;font-weight:700;background:#7c5cff;color:#fff">Demander</button></div><div id="cp-rep" style="margin-top:8px;font-size:15px;line-height:1.5"></div></section>';
     if (C.calendrier && C.calendrier.length) h += '<section class="carte"><h2>Les prochains jours</h2>' + C.calendrier.slice(0, 6).map(function (e) { return ligne(esc(e.quoi), esc(e.date.split('-').reverse().slice(0, 2).join('/')), esc(e.detail)); }).join('') + '</section>';
     var x = [];
-    if (C.discipline && C.discipline.score != null) x.push(ligne('Discipline', C.discipline.score + ' %', C.discipline.checks.filter(function (c) { return c.sur; }).map(function (c) { return esc(c.regle) + ' ' + c.fait + '/' + c.sur; }).join(' · ')));
+    if (C.discipline) C.discipline.checks.forEach(function (c) {   // discipline en petits ronds (28/11/2026), plus de pourcentage
+      if (!c.points || !c.points.length) return;
+      x.push('<div class="ligne"><span>' + esc(c.regle) + '</span><b style="display:flex;flex-wrap:wrap;gap:3px;justify-content:flex-end;max-width:55%">' + c.points.map(function (p) { return '<i title="' + esc(p.l) + '" style="width:10px;height:10px;border-radius:50%;display:inline-block;background:' + (p.ok ? '#22c55e' : '#ef4444') + '"></i>'; }).join('') + '</b></div>');
+    });
     if (C.crash) x.push(ligne('Sans salaire, tu tiens', esc(C.crash[1].chiffre), 'krach −40 % : ' + esc(C.crash[2].chiffre)));
     if (C.fantome) x.push(ligne('Toi contre le fantôme MSCI World', (C.fantome.ecart >= 0 ? '+' : '') + eur(C.fantome.ecart, 0), eur(C.fantome.reel, 0) + ' contre ' + eur(C.fantome.fantome, 0)));
     if (C.futurs) x.push(ligne('10 000 futurs', n(C.futurs.chance100k, 1) + ' %', 'atteignent 100 000 € en 2032 · médiane ' + eur(C.futurs.mediane2032, 0)));
@@ -414,6 +419,35 @@
       + ligne('Versé dans tes placements', eur(Wr.verse, 0), '') + ligne('Bitcoin', Wr.btc.achats + ' achats', eur(Wr.btc.euros, 0) + ' investis')
       + (Wr.meilleurMois ? ligne('Ton meilleur mois', Wr.meilleurMois.pct + ' %', 'de ta paie investie en ' + esc(Wr.meilleurMois.mois)) : '') + ligne('Ton badge', esc(Wr.badge), '') + '</section>' + h;
     return h;
+  }
+  /* Questions depuis le téléphone (28/11/2026) : un petit interprète local, sur les chiffres publiés (rien ne part ailleurs). */
+  function sansAcc(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+  function repondreTel(question) {
+    var q = sansAcc(question).replace(/[?!.,;']/g, ' ').replace(/\s+/g, ' ').trim(), R = J.reperes || {}, C = J.copilote || {}, cap = J.capital && J.capital.auCours ? J.capital.auCours : {};
+    if (!q) return 'Pose-moi une question, par exemple : « mon livret », « où en est Keyence ? », « restaurants ».';
+    var envs = (J.budget && J.budget.enveloppes) || [];
+    var env = envs.filter(function (e) { return sansAcc(e.nom).split(/[^a-z0-9]+/).some(function (m) { return m.length >= 4 && q.indexOf(m.slice(0, Math.max(4, m.length - 1))) >= 0; }); });
+    if (env.length) return env.map(function (e) { return e.nom + ' : ' + eur(e.depense, 2) + ' dépensés sur ' + eur(e.prevu, 2) + ', ' + (e.reste >= 0 ? 'reste ' + eur(e.reste, 2) : 'dépassé de ' + eur(-e.reste, 2)); }).join(' · ') + ' (' + (J.budget.cycle || 'cycle en cours') + ').';
+    var acts = (R.watchlist && R.watchlist.actions) || [], act = acts.filter(function (a) { return q.indexOf(sansAcc(a.nom)) >= 0 || (a.symbole && (' ' + q + ' ').indexOf(' ' + sansAcc(a.symbole).split('.')[0] + ' ') >= 0); })[0];
+    if (act) { var st = { achat: 'dans ta zone 1', entre: 'entre tes deux zones', zone2: 'dans ta zone 2' }[act.statut] || (act.ecart != null ? 'à ' + Math.round(Math.abs(act.ecart)) + ' % de ta zone 1' : '');
+      return act.nom + ' : ' + (act.cours != null ? n(act.cours, act.cours >= 1000 ? 0 : 2) + ' ' + act.devise + (act.coursEur != null && act.devise !== 'EUR' ? ' (≈ ' + eur(act.coursEur, 2) + ')' : '') : 'cours à venir') + (st ? ', ' + st : '') + (act.per ? ', PER ' + n(act.per, 1) : '') + (act.resultats ? ', résultats le ' + act.resultats.split('-').reverse().join('/') : '') + '.'; }
+    if (/salaire|liberte|independ|rentier|vivre de/.test(q) && R.liberte) return 'Plus besoin de salaire à ' + eur(R.liberte.objectif, 0) + ' (tes ' + eur(R.liberte.depensesMois, 0) + ' de dépenses par mois × 12 ÷ 4 %). Ton capital paie déjà ' + R.liberte.faites + ' dépense' + (R.liberte.faites > 1 ? 's' : '') + ' sur ' + R.liberte.marches.length + (R.liberte.prochaine ? ' ; prochaine : ' + R.liberte.prochaine.nom : '') + '.';
+    if (/100 ?000|100 ?k|objectif|quand/.test(q) && !/prochain|calendrier/.test(q)) return 'Capital ' + eur(cap.total, 0) + ', soit ' + n((cap.total || 0) / 1000, 1) + ' % des 100 000 €.' + (C.futurs ? ' Sur 10 000 futurs simulés avec le plan actuel, ' + n(C.futurs.chance100k, 1) + ' % atteignent 100 000 € d’ici février 2032 ; le futur médian finit à ' + eur(C.futurs.mediane2032, 0) + '.' : '');
+    if (/livret|matelas/.test(q) && J.livret) return 'Livret A : ' + eur(J.livret.solde, 2) + (J.livret.matelas ? (J.livret.matelas.plein ? ', matelas plein.' : ', matelas à ' + n(J.livret.matelas.pct, 0) + ' %.') : '.');
+    if (/\bpea\b/.test(q) && J.pea) return 'PEA : ' + eur(J.pea.valeur, 2) + ' (versé ' + eur(J.pea.verse, 0) + ').';
+    if (/crypto|bitcoin|btc|link/.test(q) && J.crypto) return 'Crypto : ' + eur(J.crypto.valeur, 2) + (J.crypto.btc ? ' · bitcoin ' + eur(J.crypto.btc.valeur, 2) + ' (PRU ' + eur(J.crypto.btc.pru, 0) + ')' : '') + (J.crypto.link ? ' · LINK ' + eur(J.crypto.link.valeur, 2) : '') + '.';
+    if (/trading/.test(q)) return 'Trading : ' + eur(cap.trading, 2) + '.';
+    if (/banque|compte|solde/.test(q) && J.banque) return 'Banque (3 comptes) : ' + eur(J.banque.total, 2) + (J.budget ? ' · à répartir ' + eur(J.budget.aRepartir, 2) : '') + '.';
+    if (/paie/.test(q) && J.budget) return 'Prochaine paie attendue vers le ' + String(J.budget.prochainePaie || '').split('-').reverse().join('/') + '.';
+    if (/prochain|calendrier|semaine|a venir|agenda|faire/.test(q)) return (C.calendrier || []).slice(0, 5).map(function (e) { return e.date.split('-').reverse().slice(0, 2).join('/') + ' : ' + e.quoi; }).join(' · ') || 'Rien dans les jours qui viennent.';
+    if (/discipline|regle/.test(q) && C.discipline) return 'Tes règles : ' + C.discipline.checks.filter(function (c) { return c.sur; }).map(function (c) { return c.regle.toLowerCase() + ' ' + c.fait + ' fois sur ' + c.sur; }).join(' ; ') + '.';
+    if (/patrimoine/.test(q)) return 'Patrimoine net : ' + eur(J.patrimoineNet, 0) + ' au dernier relevé.';
+    if (/capital|combien j ai|ou j en suis|ou en suis/.test(q)) return 'Capital : ' + eur(cap.total, 0) + ' (trading ' + eur(cap.trading, 0) + ', crypto ' + eur(cap.crypto, 0) + ', PEA ' + eur(cap.pea, 0) + ', Livret A ' + eur(cap.livret, 0) + ').';
+    return 'Je n’ai pas compris. Essaie : « mon livret », « où en est Keyence ? », « restaurants », « quand les 100 000 € ? », « quoi de prévu cette semaine ? ».';
+  }
+  function demanderTel() {
+    var i = document.querySelector('#page [data-q]'), z = document.getElementById('cp-rep'); if (!i || !z || !J) return;
+    z.innerHTML = '<b style="color:#7c5cff">' + esc(i.value) + '</b><br>' + esc(repondreTel(i.value)); i.blur();
   }
   /* ── 2. Situation : ce qui coince, ce qui va ── */
   function situation() {
@@ -746,6 +780,7 @@
   });
   document.getElementById('rafraichir').addEventListener('click', function () { if (!verrouille) charger(); });
   document.getElementById('page').addEventListener('click', function (e) {
+    if (e.target.closest('[data-demander]')) { demanderTel(); return; }
     if (e.target.closest('[data-lire]') && J && J.copilote) { try { speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(J.copilote.briefing); u.lang = 'fr-FR'; speechSynthesis.speak(u); } catch (x) { /* voix indisponible */ } return; }
     var sit = e.target.closest('.sit[data-o]');   // Situation : un point mène à l'onglet où regarder
     if (sit && PAGES[sit.getAttribute('data-o')]) { onglet = sit.getAttribute('data-o'); try { localStorage.setItem('cc-tel-onglet', onglet); } catch (x) { /* rien */ } window.scrollTo(0, 0); dessiner(); return; }
@@ -753,6 +788,7 @@
     var v = e.target.closest('[data-vue]');
     if (v) { vue = v.getAttribute('data-vue'); stock.ecrire('cc-vue', vue); dessiner(); }
   });
+  document.getElementById('page').addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.matches && e.target.matches('[data-q]')) { e.preventDefault(); demanderTel(); } });
   document.addEventListener('visibilitychange', function () { if (!document.hidden && !verrouille) charger(); });
   setInterval(function () { if (!document.hidden && !verrouille) charger(); }, 60000);
   dessinerOnglets(); charger();
