@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Command Center">
 <meta name="theme-color" content="#0e0f11">
 <meta name="robots" content="noindex">
-<meta name="cc-version" content="c02e844926bd3b2e">
+<meta name="cc-version" content="ecd53de0c212ca31">
 <meta name="cc-donnees" content="https://raw.githubusercontent.com/kyrs0/cc-telephone/main/donnees.chiffre.json">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icone.png">
@@ -399,7 +399,8 @@
   /* Copilote (27/11/2026) : le briefing (lu à voix haute), les prochains jours, la discipline, le crash-test, le fantôme MSCI World, les 10 000 futurs */
   function copiloteTel() {
     var C = J.copilote; if (!C) return '';
-    var h = '<section class="carte"><h2>Copilote<em>ton briefing</em></h2><div class="sous" style="font-size:15px;line-height:1.55">' + esc(C.briefing) + '</div><button data-lire style="margin-top:10px;border:0;border-radius:12px;padding:9px 14px;font-weight:700;background:#7c5cff;color:#fff">▶ Écouter</button></section>';
+    var BP = C.briefingPoints || [];   // briefing en 5 points (28/11/2026)
+    var h = '<section class="carte"><h2>Copilote<em>ton briefing</em></h2>' + (BP.length ? BP.map(function (p) { return '<div style="padding:6px 0;border-top:1px solid rgba(127,127,127,.18)"><b style="display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:' + (p.id === 'alertes' ? (p.nb ? '#ef4444' : '#22c55e') : '#7c5cff') + '">' + esc(p.titre) + '</b><span style="font-size:14.5px;line-height:1.5">' + esc(p.texte) + '</span></div>'; }).join('') : '<div class="sous" style="font-size:15px;line-height:1.55">' + esc(C.briefing) + '</div>') + '<button data-lire style="margin-top:10px;border:0;border-radius:12px;padding:9px 14px;font-weight:700;background:#7c5cff;color:#fff">▶ Écouter</button></section>';
     if (C.calendrier && C.calendrier.length) h += '<section class="carte"><h2>Les prochains jours</h2>' + C.calendrier.slice(0, 6).map(function (e) { return ligne(esc(e.quoi), esc(e.date.split('-').reverse().slice(0, 2).join('/')), esc(e.detail)); }).join('') + '</section>';
     var x = [];
     if (C.discipline && C.discipline.score != null) x.push(ligne('Discipline', C.discipline.score + ' %', C.discipline.checks.filter(function (c) { return c.sur; }).map(function (c) { return esc(c.regle) + ' ' + c.fait + '/' + c.sur; }).join(' · ')));
@@ -407,6 +408,11 @@
     if (C.fantome) x.push(ligne('Toi contre le fantôme MSCI World', (C.fantome.ecart >= 0 ? '+' : '') + eur(C.fantome.ecart, 0), eur(C.fantome.reel, 0) + ' contre ' + eur(C.fantome.fantome, 0)));
     if (C.futurs) x.push(ligne('10 000 futurs', n(C.futurs.chance100k, 1) + ' %', 'atteignent 100 000 € en 2032 · médiane ' + eur(C.futurs.mediane2032, 0)));
     if (x.length) h += '<section class="carte"><h2>En un coup d’œil</h2>' + x.join('') + '</section>';
+    var Wr = C.wrapped;   // le Wrapped de l'année finie, tout le mois de janvier (28/11/2026)
+    if (Wr) h = '<section class="carte" style="background:linear-gradient(140deg,#4c1d95,#be185d);color:#fff"><h2 style="color:#fff">Ton année ' + esc(Wr.annee) + '<em style="color:#fde68a">est arrivée 🎉</em></h2>'
+      + ligne('Ton capital', Wr.capitalDebut ? '×' + n(Wr.capitalFin / Wr.capitalDebut, 1) : eur(Wr.capitalFin, 0), Wr.capitalDebut ? eur(Wr.capitalDebut, 0) + ' → ' + eur(Wr.capitalFin, 0) : '')
+      + ligne('Versé dans tes placements', eur(Wr.verse, 0), '') + ligne('Bitcoin', Wr.btc.achats + ' achats', eur(Wr.btc.euros, 0) + ' investis')
+      + (Wr.meilleurMois ? ligne('Ton meilleur mois', Wr.meilleurMois.pct + ' %', 'de ta paie investie en ' + esc(Wr.meilleurMois.mois)) : '') + ligne('Ton badge', esc(Wr.badge), '') + '</section>' + h;
     return h;
   }
   /* ── 2. Situation : ce qui coince, ce qui va ── */
